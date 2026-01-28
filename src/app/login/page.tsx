@@ -70,13 +70,13 @@ export default function LoginPage() {
 
       if (profile && ['admin', 'editor'].includes(profile.role)) {
         console.log('Redirecting to /admin');
-        router.push('/admin');
+        window.location.href = '/admin';
       } else {
         console.log('Redirecting to /');
-        router.push('/');
+        window.location.href = '/';
       }
-      // router.refresh(); // Removed to prevent race condition with navigation
     } catch (error: any) {
+      console.error('Login error details:', error);
       setError(error.message || 'Failed to sign in');
     } finally {
       setLoading(false);
