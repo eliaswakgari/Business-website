@@ -48,22 +48,47 @@ export async function inviteUser(email: string, role: 'admin' | 'editor' | 'view
         }
     );
 
-    // 2. Hybrid Invite Approach
-    // a) Try to send the email (as requested)
-    const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/setup-account`
-    });
+    // 2. Alternative Approach: Create user + Generate magic link
+    // This is more reliable than inviteUserByEmail which can timeout
+    console.log('Attempting to create user and generate invitation link for:', email);
+    console.log('Redirect URL:', `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/setup-account`);
 
-    if (inviteError) {
-        return { error: 'Email invite failed: ' + inviteError.message };
+    // First, check if user already exists
+    const { data: existingUsers } = await adminClient.auth.admin.listUsers();
+    const existingUser = existingUsers?.users?.find((u: any) => u.email === email);
+
+    let userId: string;
+
+    if (existingUser) {
+        console.log('User already exists:', existingUser.id);
+        userId = existingUser.id;
+    } else {
+        // Create the user without sending email (we'll send it manually via magic link)
+        const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
+            email: email,
+            email_confirm: true, // Auto-confirm email
+            user_metadata: {
+                invited_at: new Date().toISOString(),
+                invited_role: role
+            }
+        });
+
+        if (createError) {
+            console.error('Error creating user:', createError);
+            return { error: 'Failed to create user: ' + createError.message };
+        }
+
+        if (!newUser.user) {
+            console.error('No user data returned');
+            return { error: 'Failed to create user' };
+        }
+
+        console.log('User created successfully:', newUser.user.id);
+        userId = newUser.user.id;
     }
 
-    if (!inviteData.user) {
-        return { error: 'Failed to create user invite' };
-    }
-
-    // b) Generate a backup link immediately so the Admin has it if email fails
-    const { data: linkData } = await adminClient.auth.admin.generateLink({
+    // Generate magic link for the user to set their password
+    const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
         type: 'magiclink',
         email: email,
         options: {
@@ -71,50 +96,58 @@ export async function inviteUser(email: string, role: 'admin' | 'editor' | 'view
         }
     });
 
-    // We will return this link
+    if (linkError) {
+        console.error('Error generating magic link:', linkError);
+        return { error: 'Failed to generate invitation link: ' + linkError.message };
+    }
+
     const finalLink = linkData?.properties?.action_link;
 
-    // 3. Create profile entry with role
+    if (!finalLink) {
+        console.error('No magic link generated');
+        return { error: 'Failed to generate invitation link' };
+    }
+
+    console.log('Magic link generated successfully');
+
+    // Now try to send email via Supabase (this might still timeout, but we have the link)
+    // We'll do this in a non-blocking way
+    adminClient.auth.admin.inviteUserByEmail(email, {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/setup-account`
+    }).then(({ error }: any) => {
+        if (error) {
+            console.warn('Email sending failed (but we have magic link):', error.message);
+        } else {
+            console.log('✅ Email sent successfully via Supabase');
+        }
+    }).catch((err: any) => {
+        console.warn('Email sending failed (but we have magic link):', err.message);
+    });
+
     // 3. Create or Update profile entry with role
-    // We use upsert to handle cases where:
-    // a) A trigger automatically created the profile
-    // b) The user was already invited/exists and we are just updating their role
-    const { error: profileError } = await adminClient
-        .from('profiles')
-        .upsert([
-            {
-                id: inviteData.user.id,
-                email: email,
-                role: role,
-                // Only update full_name if it's new (handle via onConflict if needed, but simple upsert is fine here since we pass empty string)
-                // Actually to avoid overwriting existing names with empty string, we should be careful.
-                // improved strategy:
-            }
-        ], { onConflict: 'id', ignoreDuplicates: false });
-    // Wait, if we upsert with full_name: '', we might wipe their name if they exist.
-    // Better validation: Check if profile exists, if so update role. If not, insert.
-
-    // Changing approach to be safer: Update role if exists, Insert if not.
-    // Actually, upsert is fine if we exclude fields we don't want to overwrite?
-    // Supabase upsert overwrites all columns provided.
-
-    // Let's do:
     const { error: upsertError } = await adminClient
         .from('profiles')
         .upsert({
-            id: inviteData.user.id,
+            id: userId,
             email: email,
             role: role,
             updated_at: new Date().toISOString()
-        }, { onConflict: 'id' }); // We won't include full_name here to avoid wiping it.
+        }, { onConflict: 'id' });
 
     if (upsertError) {
         console.error('Error updating/creating profile:', upsertError);
         return { error: 'Failed to update profile: ' + upsertError.message };
     }
 
+    console.log('Profile created/updated successfully');
+    console.log('✅ Invitation process completed. Share the magic link with the user.');
+
     revalidatePath('/admin/users');
-    return { success: true, inviteLink: finalLink };
+    return {
+        success: true,
+        inviteLink: finalLink,
+        message: 'User invited! Email may take a few minutes to arrive. You can share the link below if needed.'
+    };
 }
 
 export async function getInviteLink(email: string) {

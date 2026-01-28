@@ -35,6 +35,22 @@ export default function SetupAccountPage() {
         getUser();
     }, []);
 
+    const validatePassword = (pass: string): { valid: boolean; message: string } => {
+        if (pass.length < 8) {
+            return { valid: false, message: 'Password must be at least 8 characters' };
+        }
+        if (!/[A-Z]/.test(pass)) {
+            return { valid: false, message: 'Password must contain at least one uppercase letter' };
+        }
+        if (!/[a-z]/.test(pass)) {
+            return { valid: false, message: 'Password must contain at least one lowercase letter' };
+        }
+        if (!/[0-9]/.test(pass)) {
+            return { valid: false, message: 'Password must contain at least one number' };
+        }
+        return { valid: true, message: 'Strong password' };
+    };
+
     const handleSetup = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -43,8 +59,9 @@ export default function SetupAccountPage() {
             return;
         }
 
-        if (password.length < 6) {
-            toast.error("Password must be at least 6 characters");
+        const passwordCheck = validatePassword(password);
+        if (!passwordCheck.valid) {
+            toast.error(passwordCheck.message);
             return;
         }
 
@@ -78,10 +95,12 @@ export default function SetupAccountPage() {
                 if (profileError) throw profileError;
             }
 
-            toast.success("Account setup complete!");
+            toast.success("Account setup complete! 🎉");
 
             // 3. Redirect to Dashboard
-            router.push('/admin');
+            setTimeout(() => {
+                router.push('/admin');
+            }, 1000);
 
         } catch (error: any) {
             console.error('Setup error:', error);
@@ -128,6 +147,9 @@ export default function SetupAccountPage() {
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                             />
+                            <p className="text-xs text-muted-foreground">
+                                Must be at least 8 characters with uppercase, lowercase, and a number
+                            </p>
                         </div>
 
                         <div className="space-y-2">

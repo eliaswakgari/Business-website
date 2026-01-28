@@ -25,7 +25,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash2, Loader2, Mail, Shield, User, CheckCircle2, Copy, Link2 } from 'lucide-react';
+import { Plus, Trash2, Loader2, Mail, Shield, User, CheckCircle2, Copy, Link2, Edit2, RefreshCw } from 'lucide-react';
 import { inviteUser, getInviteLink } from './actions';
 import { toast } from 'sonner';
 
@@ -34,6 +34,8 @@ export default function UsersManagement() {
     const [loading, setLoading] = useState(true);
     const [inviteOpen, setInviteOpen] = useState(false);
     const [inviting, setInviting] = useState(false);
+    const [editMode, setEditMode] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<any>(null);
 
     // Invite Form State
     const [email, setEmail] = useState('');
@@ -148,10 +150,6 @@ export default function UsersManagement() {
     const handleDelete = async (userId: string) => {
         if (!confirm('Are you sure you want to remove this user? This will remove their access immediately.')) return;
 
-        // Note: Deleting from auth.users requires admin API. 
-        // For now we will just delete from profiles which effectively removes app access if RLS checks profile.
-        // Ideally we would want a server action to delete from auth.users too.
-
         const { error } = await supabase
             .from('profiles')
             .delete()
@@ -165,6 +163,64 @@ export default function UsersManagement() {
         }
     };
 
+    const handleEditUser = (user: any) => {
+        setEditMode(true);
+        setSelectedUser(user);
+        setEmail(user.email);
+        setRole(user.role);
+        setInviteOpen(true);
+    };
+
+    const handleUpdateUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setInviting(true);
+
+        try {
+            // Update user role in profiles table
+            const { error } = await supabase
+                .from('profiles')
+                .update({
+                    role: role,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', selectedUser.id);
+
+            if (error) {
+                toast.error('Failed to update user: ' + error.message);
+            } else {
+                toast.success('User updated successfully! 🎉');
+                fetchUsers();
+
+                // Close modal after 2 seconds
+                setTimeout(() => {
+                    setInviteOpen(false);
+                    setEditMode(false);
+                    setSelectedUser(null);
+                    setEmail('');
+                    setRole('viewer');
+                }, 2000);
+            }
+        } catch (err: any) {
+            toast.error('An unexpected error occurred');
+            console.error(err);
+        } finally {
+            setInviting(false);
+        }
+    };
+
+    const handleResendLink = async () => {
+        if (!selectedUser) return;
+
+        const result = await getInviteLink(selectedUser.email);
+        if (result.error) {
+            toast.error(result.error);
+        } else if (result.inviteLink) {
+            setSuccessLink(result.inviteLink);
+            navigator.clipboard.writeText(result.inviteLink);
+            toast.success('Fresh invite link copied to clipboard!');
+        }
+    };
+
     const handleGetLink = async (email: string) => {
         const result = await getInviteLink(email);
         if (result.error) {
@@ -173,6 +229,15 @@ export default function UsersManagement() {
             navigator.clipboard.writeText(result.inviteLink);
             toast.success('Fresh invite link copied to clipboard!');
         }
+    };
+
+    const handleCloseModal = () => {
+        setInviteOpen(false);
+        setEditMode(false);
+        setSelectedUser(null);
+        setSuccessLink(null);
+        setEmail('');
+        setRole('viewer');
     };
 
     if (loading || currentUserRole !== 'admin') {
@@ -194,20 +259,26 @@ export default function UsersManagement() {
                 </div>
 
                 <Dialog open={inviteOpen} onOpenChange={(open) => {
-                    setInviteOpen(open);
-                    if (!open) setSuccessLink(null);
+                    if (!open) handleCloseModal();
+                    else setInviteOpen(true);
                 }}>
                     <DialogTrigger asChild>
-                        <Button>
+                        <Button onClick={() => {
+                            setEditMode(false);
+                            setEmail('');
+                            setRole('viewer');
+                        }}>
                             <Plus className="h-4 w-4 mr-2" />
                             Invite User
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[425px]">
                         <DialogHeader>
-                            <DialogTitle>Invite a Team Member</DialogTitle>
+                            <DialogTitle>{editMode ? 'Edit User Details' : 'Invite a Team Member'}</DialogTitle>
                             <DialogDescription>
-                                Send an invitation email to a new user. They will be able to set their password.
+                                {editMode
+                                    ? 'Update user role or resend invitation.'
+                                    : 'Send an invitation email to a new user. They will be able to set their password.'}
                             </DialogDescription>
                         </DialogHeader>
                         {successLink ? (
@@ -216,9 +287,11 @@ export default function UsersManagement() {
                                     <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
                                         <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
                                     </div>
-                                    <DialogTitle>Invitation Sent! ✉️</DialogTitle>
+                                    <DialogTitle>{editMode ? 'Link Generated! 🔗' : 'Invitation Sent! ✉️'}</DialogTitle>
                                     <DialogDescription>
-                                        An invitation email has been sent to the user. They will receive a link to set up their account. This modal will close automatically.
+                                        {editMode
+                                            ? 'The invitation link has been generated. Ensure the user checks their spam folder.'
+                                            : 'An invitation email has been sent. This modal will close automatically.'}
                                     </DialogDescription>
                                 </div>
                                 <div className="flex items-center gap-2 p-3 bg-muted rounded-lg border">
@@ -238,13 +311,13 @@ export default function UsersManagement() {
                                     </Button>
                                 </div>
                                 <DialogFooter>
-                                    <Button type="button" className="w-full" onClick={() => setInviteOpen(false)}>
+                                    <Button type="button" className="w-full" onClick={handleCloseModal}>
                                         Done
                                     </Button>
                                 </DialogFooter>
                             </div>
                         ) : (
-                            <form onSubmit={handleInvite} className="space-y-4 py-4">
+                            <form onSubmit={editMode ? handleUpdateUser : handleInvite} className="space-y-4 py-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="email">Email address</Label>
                                     <Input
@@ -254,7 +327,14 @@ export default function UsersManagement() {
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         required
+                                        disabled={editMode}
+                                        className={editMode ? "bg-muted" : ""}
                                     />
+                                    {editMode && (
+                                        <p className="text-[10px] text-muted-foreground">
+                                            Email cannot be changed once invited.
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="role">Role</Label>
@@ -284,15 +364,31 @@ export default function UsersManagement() {
                                         </SelectContent>
                                     </Select>
                                 </div>
+
+                                {editMode && (
+                                    <div className="pt-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="w-full text-muted-foreground hover:text-primary"
+                                            onClick={handleResendLink}
+                                        >
+                                            <RefreshCw className="mr-2 h-3 w-3" />
+                                            Resend Invitation Link
+                                        </Button>
+                                    </div>
+                                )}
+
                                 <DialogFooter>
                                     <Button type="submit" disabled={inviting} className="w-full">
                                         {inviting ? (
                                             <>
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Sending Invite...
+                                                {editMode ? 'Updating...' : 'Sending Invite...'}
                                             </>
                                         ) : (
-                                            'Send Invitation'
+                                            editMode ? 'Update User' : 'Send Invitation'
                                         )}
                                     </Button>
                                 </DialogFooter>
@@ -346,6 +442,14 @@ export default function UsersManagement() {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleEditUser(user)}
+                                                    className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                                >
+                                                    <Edit2 className="h-4 w-4" />
+                                                </Button>
                                                 {!user.full_name && (
                                                     <Button
                                                         variant="ghost"
