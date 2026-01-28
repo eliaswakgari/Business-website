@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bell, Search, LogOut } from 'lucide-react';
+import { Bell, Search, LogOut, Menu, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useSidebar } from './SidebarContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +28,7 @@ interface AdminHeaderProps {
 export default function AdminHeader({ user, profile }: AdminHeaderProps) {
   const router = useRouter();
   const supabase = createClient();
+  const { isSidebarOpen, setIsSidebarOpen } = useSidebar();
 
   const [unreadContacts, setUnreadContacts] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -34,7 +36,6 @@ export default function AdminHeader({ user, profile }: AdminHeaderProps) {
   useEffect(() => {
     fetchUnreadCount();
 
-    // Set up real-time subscription for new contacts
     const channel = supabase
       .channel('public:contacts')
       .on('postgres_changes', {
@@ -80,72 +81,87 @@ export default function AdminHeader({ user, profile }: AdminHeaderProps) {
   };
 
   return (
-    <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6">
-      {/* Search */}
-      <div className="flex-1 max-w-md">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search content..."
-            className="pl-10"
-          />
+    <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 md:px-6 sticky top-0 z-40">
+      <div className="flex items-center gap-4 flex-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="lg:hidden text-slate-600 dark:text-slate-400"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+
+        <div className="hidden sm:flex flex-1 max-w-md">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search..."
+              className="pl-10 h-9 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4 shrink-0">
+        <Button variant="ghost" size="icon" className="sm:hidden">
+          <Search className="h-5 w-5" />
+        </Button>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
+            <Button variant="ghost" size="icon" className="relative h-9 w-9">
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 h-4 w-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center border-2 border-white dark:border-slate-900">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
+                <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-900" />
               )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-80" align="end">
-            <DropdownMenuLabel className="flex justify-between items-center">
-              <span>Notifications</span>
+            <DropdownMenuLabel className="flex justify-between items-center px-4 py-3">
+              <span className="font-bold">Notifications</span>
               {unreadCount > 0 && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
                   {unreadCount} New
                 </Badge>
               )}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <div className="max-h-[300px] overflow-y-auto">
+            <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
               {unreadContacts.length > 0 ? (
                 unreadContacts.map((contact) => (
                   <DropdownMenuItem
                     key={contact.id}
-                    className="p-3 cursor-pointer focus:bg-slate-100 dark:focus:bg-slate-800"
+                    className="p-3 cursor-pointer focus:bg-slate-100 dark:focus:bg-slate-800 border-b last:border-0 border-slate-100 dark:border-slate-800"
                     onClick={() => markAsRead(contact.id)}
                   >
                     <div className="flex flex-col gap-1 w-full">
                       <div className="flex justify-between items-center">
-                        <span className="font-semibold text-sm truncate">{contact.name}</span>
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">{contact.name}</span>
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase opacity-70">
                           {new Date(contact.created_at).toLocaleDateString()}
                         </span>
                       </div>
-                      <p className="text-xs text-muted-foreground line-clamp-2">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
                         {contact.message}
                       </p>
                     </div>
                   </DropdownMenuItem>
                 ))
               ) : (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  No new messages
+                <div className="px-6 py-10 text-center">
+                  <div className="flex justify-center mb-3">
+                    <Bell className="h-10 w-10 text-slate-200 dark:text-slate-800" />
+                  </div>
+                  <div className="text-sm font-medium text-slate-900 dark:text-white">No new messages</div>
+                  <p className="text-xs text-slate-500 mt-1">We'll notify you when someone contacts you.</p>
                 </div>
               )}
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="justify-center text-primary font-medium p-2 cursor-pointer"
+              className="justify-center text-primary font-bold py-3 cursor-pointer hover:bg-primary/5 transition-colors"
               onClick={() => router.push('/admin/contacts')}
             >
               View all messages
@@ -155,34 +171,38 @@ export default function AdminHeader({ user, profile }: AdminHeaderProps) {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <Avatar className="h-8 w-8">
+            <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+              <Avatar className="h-9 w-9 border border-border/50">
                 <AvatarImage src={profile?.avatar_url || ''} alt={profile?.full_name || 'User'} />
-                <AvatarFallback>{(profile?.full_name?.[0] || user?.email?.[0] || 'U').toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="bg-primary/10 text-primary font-bold">{(profile?.full_name?.[0] || user?.email?.[0] || 'U').toUpperCase()}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
-            <DropdownMenuLabel className="font-normal">
+            <DropdownMenuLabel className="font-normal p-4">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{profile?.full_name || 'User'}</p>
-                <p className="text-xs leading-none text-muted-foreground">
+                <p className="text-sm font-bold leading-none text-slate-900 dark:text-white">{profile?.full_name || 'User'}</p>
+                <p className="text-xs leading-none text-muted-foreground truncate opacity-70">
                   {user?.email}
                 </p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => router.push('/admin/settings')}>
+            <DropdownMenuGroup className="p-1">
+              <DropdownMenuItem onClick={() => router.push('/admin/settings')} className="rounded-md cursor-pointer">
+                <Settings className="mr-2 h-4 w-4" />
                 Settings
                 <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut}>
-              Log out
-              <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
-            </DropdownMenuItem>
+            <div className="p-1">
+              <DropdownMenuItem onClick={handleSignOut} className="rounded-md cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/50">
+                <LogOut className="mr-2 h-4 w-4" />
+                Log out
+                <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
+              </DropdownMenuItem>
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { SidebarProvider } from '@/components/admin/SidebarContext';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
 import ProgressBar from '@/components/admin/ProgressBar';
@@ -31,15 +32,17 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
-      <AdminSidebar user={user} profile={profile} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <ProgressBar />
-        <AdminHeader user={user} profile={profile} />
-        <main className="flex-1 overflow-y-auto p-6">
-          {children}
-        </main>
+    <SidebarProvider>
+      <div className="flex h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden">
+        <AdminSidebar user={user} profile={profile} />
+        <div className="flex-1 flex flex-col min-w-0">
+          <ProgressBar />
+          <AdminHeader user={user} profile={profile} />
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }

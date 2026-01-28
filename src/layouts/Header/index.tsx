@@ -45,7 +45,7 @@ export default function Header() {
         </div>
         <HeaderActions isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} />
       </div>
-      <MobileMenu isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} />
+      <MobileMenu isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} megaMenus={megaMenuConfig} />
     </header>
   );
 }

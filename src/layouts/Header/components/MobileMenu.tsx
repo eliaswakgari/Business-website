@@ -1,194 +1,155 @@
+'use client';
+
+import React, { useState } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronDown, LogIn, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Laptop,
-  Users,
-  BarChart3,
-  FileText,
-  BookOpen,
-  MessageSquare,
-  LayoutGrid,
-  CreditCard,
-  Star,
-  LogIn,
-  ChevronRight,
-} from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { MegaMenuData } from "@/types";
 
 interface MobileMenuProps {
   isMenuOpen: boolean;
   setIsMenuOpen: (v: boolean) => void;
+  megaMenus: Record<string, MegaMenuData>;
 }
 
 export default function MobileMenu({
   isMenuOpen,
   setIsMenuOpen,
+  megaMenus,
 }: MobileMenuProps) {
-  if (!isMenuOpen) return null;
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
+
+  const toggleSection = (id: string) => {
+    setExpandedSection(expandedSection === id ? null : id);
+  };
 
   return (
-    <>
-      {/* Backdrop overlay */}
-      <div
-        className="md:hidden fixed inset-0 top-16 z-40 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
-        onClick={() => setIsMenuOpen(false)}
-      />
+    <AnimatePresence>
+      {isMenuOpen && (
+        <>
+          {/* Main menu panel */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="md:hidden fixed inset-x-0 top-16 bottom-0 z-50 bg-background overflow-y-auto pb-10"
+          >
+            <div className="container px-6 py-6 pb-24">
+              <nav className="flex flex-col space-y-2">
+                {Object.entries(megaMenus).map(([id, data]) => (
+                  <div key={id} className="border-b border-border/50 last:border-0 pb-2">
+                    <button
+                      onClick={() => toggleSection(id)}
+                      className="flex items-center justify-between w-full py-4 text-left group"
+                    >
+                      <span className="text-lg font-semibold tracking-tight group-hover:text-primary transition-colors uppercase">
+                        {data.title}
+                      </span>
+                      <motion.div
+                        animate={{ rotate: expandedSection === id ? 180 : 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                      </motion.div>
+                    </button>
 
-      {/* Menu container */}
-      <div className="md:hidden fixed top-16 left-0 right-0 z-50 animate-in slide-in-from-top duration-300 max-h-[85vh] overflow-y-auto">
-        <div
-          className="mx-3 mt-2 rounded-xl border border-purple-900/30"
-          style={{
-            background: "linear-gradient(180deg, #1a1a2e 0%, #16161e 100%)",
-            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)",
-          }}
-        >
-          <nav className="flex flex-col p-3">
-            {/* Products section */}
-            <div className="mb-3 pb-3 border-b border-gray-800/50">
-              <div className="flex items-center mb-2 px-1">
-                <div className="w-1 h-4 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full mr-2"></div>
-                <h3 className="font-semibold text-white text-base">Products</h3>
-              </div>
-              <div className="space-y-0.5">
-                <Link
-                  href="#"
-                  className="flex items-center py-2 px-3 text-gray-200 rounded-lg hover:bg-gray-800 transition-all duration-200 group"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <Laptop className="h-4 w-4 text-purple-400 mr-2 group-hover:text-purple-300 transition-colors" />
-                  <div>
-                    <div className="font-medium text-sm">Dashboard</div>
-                    <div className="text-xs text-gray-400 group-hover:text-gray-300 transition-colors">
-                      Complete overview
-                    </div>
-                  </div>
-                  <ChevronRight className="ml-auto h-3 w-3 text-gray-500 group-hover:text-gray-300 transition-colors" />
-                </Link>
-                <Link
-                  href="#"
-                  className="flex items-center py-2 px-3 text-gray-200 rounded-lg hover:bg-gray-800 transition-all duration-200 group"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <Users className="h-4 w-4 text-purple-400 mr-2 group-hover:text-purple-300 transition-colors" />
-                  <div>
-                    <div className="font-medium text-sm">Team Management</div>
-                    <div className="text-xs text-gray-400 group-hover:text-gray-300 transition-colors">
-                      Manage your team
-                    </div>
-                  </div>
-                  <ChevronRight className="ml-auto h-3 w-3 text-gray-500 group-hover:text-gray-300 transition-colors" />
-                </Link>
-                <Link
-                  href="#"
-                  className="flex items-center py-2 px-3 text-gray-200 rounded-lg hover:bg-gray-800 transition-all duration-200 group"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <BarChart3 className="h-4 w-4 text-purple-400 mr-2 group-hover:text-purple-300 transition-colors" />
-                  <div>
-                    <div className="font-medium text-sm">Analytics</div>
-                    <div className="text-xs text-gray-400 group-hover:text-gray-300 transition-colors">
-                      Data visualization
-                    </div>
-                  </div>
-                  <ChevronRight className="ml-auto h-3 w-3 text-gray-500 group-hover:text-gray-300 transition-colors" />
-                </Link>
-              </div>
-            </div>
+                    <AnimatePresence>
+                      {expandedSection === id && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3, ease: "easeInOut" }}
+                          className="overflow-hidden"
+                        >
+                          <div className="grid grid-cols-1 gap-4 py-2">
+                            {data.columns.map((column, colIdx) => (
+                              <div key={colIdx} className="space-y-3">
+                                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-[0.1em] px-1">
+                                  {column.title}
+                                </p>
+                                <div className="space-y-1">
+                                  {column.items.map((item, itemIdx) => (
+                                    <Link
+                                      key={itemIdx}
+                                      href={item.href}
+                                      onClick={() => setIsMenuOpen(false)}
+                                      className="flex items-center gap-3 p-2 rounded-xl hover:bg-primary/5 active:bg-primary/10 transition-all duration-200"
+                                    >
+                                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:bg-primary/20">
+                                        {item.icon}
+                                      </div>
+                                      <div>
+                                        <div className="text-sm font-semibold">{item.title}</div>
+                                        <div className="text-xs text-muted-foreground line-clamp-1">{item.description}</div>
+                                      </div>
+                                    </Link>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
 
-            {/* Resources section */}
-            <div className="mb-3 pb-3 border-b border-gray-800/50">
-              <div className="flex items-center mb-2 px-1">
-                <div className="w-1 h-4 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full mr-2"></div>
-                <h3 className="font-semibold text-white text-base">
-                  Resources
-                </h3>
-              </div>
-              <div className="space-y-0.5">
-                <Link
-                  href="#"
-                  className="flex items-center py-2 px-3 text-gray-200 rounded-lg hover:bg-gray-800 transition-all duration-200 group"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <FileText className="h-4 w-4 text-pink-400 mr-2 group-hover:text-pink-300 transition-colors" />
-                  <div>
-                    <div className="font-medium text-sm">Documentation</div>
-                    <div className="text-xs text-gray-400 group-hover:text-gray-300 transition-colors">
-                      Guides and references
-                    </div>
+                            {/* Featured item for the section */}
+                            {data.featured && (
+                              <div className="mt-4 p-4 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10">
+                                <div className="text-sm font-bold text-primary mb-1">{data.featured.title}</div>
+                                <div className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                                  {data.featured.description}
+                                </div>
+                                <Link
+                                  href={data.featured.ctaLink}
+                                  onClick={() => setIsMenuOpen(false)}
+                                  className="text-xs font-bold text-primary inline-flex items-center gap-1 hover:underline"
+                                >
+                                  {data.featured.ctaText} <ExternalLink className="h-3 w-3" />
+                                </Link>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-                  <ChevronRight className="ml-auto h-3 w-3 text-gray-500 group-hover:text-gray-300 transition-colors" />
-                </Link>
-                <Link
-                  href="#"
-                  className="flex items-center py-2 px-3 text-gray-200 rounded-lg hover:bg-gray-800 transition-all duration-200 group"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <BookOpen className="h-4 w-4 text-pink-400 mr-2 group-hover:text-pink-300 transition-colors" />
-                  <div>
-                    <div className="font-medium text-sm">Tutorials</div>
-                    <div className="text-xs text-gray-400 group-hover:text-gray-300 transition-colors">
-                      Step-by-step guides
-                    </div>
-                  </div>
-                  <ChevronRight className="ml-auto h-3 w-3 text-gray-500 group-hover:text-gray-300 transition-colors" />
-                </Link>
-                <Link
-                  href="#"
-                  className="flex items-center py-2 px-3 text-gray-200 rounded-lg hover:bg-gray-800 transition-all duration-200 group"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <MessageSquare className="h-4 w-4 text-pink-400 mr-2 group-hover:text-pink-300 transition-colors" />
-                  <div>
-                    <div className="font-medium text-sm">Blog</div>
-                    <div className="text-xs text-gray-400 group-hover:text-gray-300 transition-colors">
-                      Latest news and tips
-                    </div>
-                  </div>
-                  <ChevronRight className="ml-auto h-3 w-3 text-gray-500 group-hover:text-gray-300 transition-colors" />
-                </Link>
-              </div>
-            </div>
+                ))}
 
-            {/* Main navigation links */}
-            <div className="mb-3 pb-3 border-b border-gray-800/50">
-              <div className="grid grid-cols-2 gap-1">
-                <Link
-                  href="#features"
-                  className="flex items-center py-2 px-3 text-gray-200 rounded-lg hover:bg-gray-800 transition-all duration-200 group"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <LayoutGrid className="h-4 w-4 text-indigo-400 mr-2 group-hover:text-indigo-300 transition-colors" />
-                  <span className="font-medium text-sm">Features</span>
-                </Link>
-                <Link
-                  href="#pricing"
-                  className="flex items-center py-2 px-3 text-gray-200 rounded-lg hover:bg-gray-800 transition-all duration-200 group"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <CreditCard className="h-4 w-4 text-indigo-400 mr-2 group-hover:text-indigo-300 transition-colors" />
-                  <span className="font-medium text-sm">Pricing</span>
-                </Link>
-                <Link
-                  href="#testimonials"
-                  className="flex items-center py-2 px-3 text-gray-200 rounded-lg hover:bg-gray-800 transition-all duration-200 group"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <Star className="h-4 w-4 text-indigo-400 mr-2 group-hover:text-indigo-300 transition-colors" />
-                  <span className="font-medium text-sm">Testimonials</span>
-                </Link>
-                <Link
-                  href="/login"
-                  className="flex items-center py-2 px-3 text-gray-200 rounded-lg hover:bg-gray-800 transition-all duration-200 group"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <LogIn className="h-4 w-4 text-gray-400 mr-2 group-hover:text-gray-300 transition-colors" />
-                  <span className="font-medium text-sm">Log in</span>
-                </Link>
-              </div>
+                {/* Static pages */}
+                <div className="py-2 space-y-1">
+                  <Link
+                    href="#pricing"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center h-14 text-lg font-semibold border-b border-border/50 uppercase"
+                  >
+                    Pricing
+                  </Link>
+                  <Link
+                    href="#testimonials"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center h-14 text-lg font-semibold border-b border-border/50 uppercase"
+                  >
+                    Testimonials
+                  </Link>
+                </div>
+
+                {/* Account Actions */}
+                <div className="pt-6 space-y-4">
+                  <Link href="/login" onClick={() => setIsMenuOpen(false)}>
+                    <Button variant="outline" className="w-full h-12 rounded-xl text-base font-bold flex gap-2">
+                      <LogIn className="h-5 w-5" />
+                      Log In
+                    </Button>
+                  </Link>
+                  <Button className="w-full h-12 rounded-xl text-base font-bold shadow-lg shadow-primary/20">
+                    Get Started Free
+                  </Button>
+                </div>
+              </nav>
             </div>
-          </nav>
-        </div>
-      </div>
-    </>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
