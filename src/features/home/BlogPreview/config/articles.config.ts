@@ -3,6 +3,7 @@ import type { BlogArticle } from "@/types";
 export const articles: BlogArticle[] = [
     {
         title: "10 Ways to Boost Your Team's Productivity",
+        slug: "10-ways-to-boost-productivity",
         excerpt:
             "Discover proven strategies to enhance your team's efficiency and output without burning out.",
         image:
@@ -13,6 +14,7 @@ export const articles: BlogArticle[] = [
     },
     {
         title: "The Future of Remote Work: Trends to Watch",
+        slug: "future-of-remote-work",
         excerpt:
             "Explore emerging trends that are shaping how teams collaborate and work together remotely.",
         image:
@@ -23,6 +25,7 @@ export const articles: BlogArticle[] = [
     },
     {
         title: "Building a Data-Driven Culture in Your Organization",
+        slug: "building-data-driven-culture",
         excerpt:
             "Learn how to foster a culture where decisions are backed by data and insights.",
         image:

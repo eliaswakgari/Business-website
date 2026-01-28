@@ -23,9 +23,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 interface AnalyticsChartsProps {
     viewsOverTime: { date: string; views: number }[];
     popularPages: { path: string; views: number }[];
+    deviceStats: { name: string; value: number }[];
 }
 
-export function AnalyticsCharts({ viewsOverTime, popularPages }: AnalyticsChartsProps) {
+export function AnalyticsCharts({ viewsOverTime, popularPages, deviceStats }: AnalyticsChartsProps) {
     const chartColors = {
         primary: 'hsl(var(--primary))',
         muted: 'hsl(var(--muted-foreground))',
@@ -37,14 +38,6 @@ export function AnalyticsCharts({ viewsOverTime, popularPages }: AnalyticsCharts
             '#10b981', // emerald
         ]
     };
-
-    // Dummy device data if not provided (or we can pass it in)
-    // For now we will accept it as prop or default it
-    const deviceStats = [
-        { name: 'Desktop', value: 65 },
-        { name: 'Mobile', value: 25 },
-        { name: 'Tablet', value: 10 },
-    ];
 
     return (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
