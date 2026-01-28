@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import {
     FileText,
@@ -7,9 +8,16 @@ import {
     TrendingUp,
     TrendingDown,
     Activity,
-    Clock
+    Clock,
+    PenTool,
+    Layout,
+    UserPlus,
+    ArrowUpRight,
+    Sparkles,
+    Palette
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { subDays, formatDistanceToNow } from 'date-fns';
 
 export default async function AdminDashboard() {
@@ -137,14 +145,91 @@ export default async function AdminDashboard() {
             views: views.toLocaleString()
         }));
 
+    const quickActions = [
+        {
+            title: 'Draft New Post',
+            description: 'Write and publish a new blog post',
+            icon: PenTool,
+            href: '/admin/posts',
+            color: 'text-blue-600 dark:text-blue-400',
+            bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+            borderColor: 'hover:border-blue-200 dark:hover:border-blue-800'
+        },
+        {
+            title: 'Create Page',
+            description: 'Add a new landing page to your site',
+            icon: Layout,
+            href: '/admin/pages',
+            color: 'text-purple-600 dark:text-purple-400',
+            bgColor: 'bg-purple-50 dark:bg-purple-900/20',
+            borderColor: 'hover:border-purple-200 dark:hover:border-purple-800'
+        },
+        {
+            title: 'Invite Team',
+            description: 'Add a new member to your team',
+            icon: UserPlus,
+            href: '/admin/users',
+            color: 'text-pink-600 dark:text-pink-400',
+            bgColor: 'bg-pink-50 dark:bg-pink-900/20',
+            borderColor: 'hover:border-pink-200 dark:hover:border-pink-800'
+        },
+        {
+            title: 'Customize Site',
+            description: 'Update site settings and appearance',
+            icon: Palette,
+            href: '/admin/settings',
+            color: 'text-amber-600 dark:text-amber-400',
+            bgColor: 'bg-amber-50 dark:bg-amber-900/20',
+            borderColor: 'hover:border-amber-200 dark:hover:border-amber-800'
+        }
+    ];
+
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
-                    <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-                        Welcome to your CMS dashboard. Here's an overview of your content.
+        <div className="space-y-8">
+            {/* Header Section */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-900 dark:to-slate-800 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
+                <div className="relative z-10">
+                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+                        Welcome back, Admin <Sparkles className="h-5 w-5 text-yellow-400" />
+                    </h1>
+                    <p className="text-slate-300 mt-2 max-w-xl">
+                        Here's what's happening with your content today. You have {unreadContactsCount} new messages and your content views are {viewsCount > (prevViewsCount || 0) ? 'up' : 'stable'}.
                     </p>
+                </div>
+                <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-white/10 to-transparent pointer-events-none" />
+                <div className="relative z-10 hidden sm:block">
+                    <Button asChild variant="secondary" className="shadow-lg hover:shadow-xl transition-all">
+                        <Link href="/">
+                            View Live Site <ArrowUpRight className="ml-2 h-4 w-4" />
+                        </Link>
+                    </Button>
+                </div>
+            </div>
+
+            {/* Quick Actions Grid */}
+            <div>
+                <h2 className="text-lg font-semibold mb-4 px-1">Quick Actions</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {quickActions.map((action) => {
+                        const Icon = action.icon;
+                        return (
+                            <Link key={action.title} href={action.href}>
+                                <Card className={`h-full border transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 cursor-pointer ${action.borderColor}`}>
+                                    <CardContent className="p-6 flex items-start gap-4">
+                                        <div className={`p-3 rounded-xl ${action.bgColor} shrink-0`}>
+                                            <Icon className={`h-6 w-6 ${action.color}`} />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-lg">{action.title}</h3>
+                                            <p className="text-sm text-muted-foreground mt-1 leading-normal">
+                                                {action.description}
+                                            </p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </Link>
+                        );
+                    })}
                 </div>
             </div>
 
