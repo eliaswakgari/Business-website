@@ -188,30 +188,32 @@ export default async function AnalyticsPage() {
           <CardTitle>Detailed Page Statistics</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Page Path</TableHead>
-                <TableHead className="text-right">Views</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {popularPagesData.length > 0 ? (
-                popularPagesData.map((page: any) => (
-                  <TableRow key={page.path}>
-                    <TableCell className="font-medium">{page.path}</TableCell>
-                    <TableCell className="text-right font-semibold">{page.views.toLocaleString()}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={2} className="text-center py-8 text-muted-foreground">
-                    No analytics data available for this period.
-                  </TableCell>
+                  <TableHead>Page Path</TableHead>
+                  <TableHead className="text-right">Views</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {popularPagesData.length > 0 ? (
+                  popularPagesData.map((page: any) => (
+                    <TableRow key={page.path}>
+                      <TableCell className="font-medium whitespace-nowrap">{page.path}</TableCell>
+                      <TableCell className="text-right font-semibold">{page.views.toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={2} className="text-center py-8 text-muted-foreground">
+                      No analytics data available for this period.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

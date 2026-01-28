@@ -139,22 +139,22 @@ export default async function AdminDashboard() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-                    <p className="text-muted-foreground mt-2">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
+                    <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
                         Welcome to your CMS dashboard. Here's an overview of your content.
                     </p>
                 </div>
             </div>
 
             {/* Stats Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {stats.map((stat) => {
                     const Icon = stat.icon;
                     return (
                         <Card key={stat.title}>
-                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                                 <CardTitle className="text-sm font-medium text-muted-foreground">
                                     {stat.title}
                                 </CardTitle>
@@ -164,17 +164,19 @@ export default async function AdminDashboard() {
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold">{stat.value}</div>
-                                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                                    {stat.trend.isUp ? (
-                                        <TrendingUp className="h-3 w-3 text-green-600" />
-                                    ) : (
-                                        <TrendingDown className="h-3 w-3 text-red-600" />
-                                    )}
-                                    <span className={stat.trend.isUp ? 'text-green-600' : 'text-red-600'}>
-                                        {stat.trend.val}
-                                    </span>
-                                    <span>from last month</span>
-                                </p>
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                                    <div className="flex items-center text-xs">
+                                        {stat.trend.isUp ? (
+                                            <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
+                                        ) : (
+                                            <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
+                                        )}
+                                        <span className={stat.trend.isUp ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                                            {stat.trend.val}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">from last month</p>
+                                </div>
                             </CardContent>
                         </Card>
                     );
@@ -182,31 +184,31 @@ export default async function AdminDashboard() {
             </div>
 
             {/* Recent Activity & Popular Content */}
-            <div className="grid gap-4 md:grid-cols-2">
-                <Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="overflow-hidden">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2 text-lg">
                             <Activity className="h-5 w-5" />
                             Recent Activity
                         </CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="px-3 sm:px-6">
                         <div className="space-y-4">
                             {recentActivity.length > 0 ? recentActivity.map((activity) => (
                                 <div key={activity.id} className="flex items-start gap-3 group">
                                     <div className={cn(
-                                        "w-2 h-2 rounded-full mt-2 transition-transform group-hover:scale-125",
+                                        "w-2 h-2 rounded-full mt-2 shrink-0 transition-transform group-hover:scale-125",
                                         activity.type === 'post' ? 'bg-blue-600' :
                                             activity.type === 'page' ? 'bg-purple-600' : 'bg-green-600'
                                     )} />
-                                    <div className="flex-1">
-                                        <p className="text-sm font-medium">{activity.title}</p>
-                                        <div className="flex items-center gap-2 mt-0.5">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">{activity.title}</p>
+                                        <div className="flex flex-wrap items-center gap-x-2 mt-0.5">
                                             <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                 <Clock className="h-3 w-3" />
                                                 {activity.time}
                                             </p>
-                                            <span className="text-xs text-muted-foreground opacity-50">•</span>
+                                            <span className="text-xs text-muted-foreground opacity-50 hidden sm:inline">•</span>
                                             <p className="text-xs text-muted-foreground font-medium">{activity.user}</p>
                                         </div>
                                     </div>
@@ -218,22 +220,22 @@ export default async function AdminDashboard() {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="overflow-hidden">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2 text-lg">
                             <TrendingUp className="h-5 w-5" />
                             Popular Content
                         </CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="px-3 sm:px-6">
                         <div className="space-y-6">
                             {popularContent.length > 0 ? popularContent.map((item, i) => (
-                                <div key={i} className="flex items-center justify-between group">
-                                    <div className="flex-1 mr-4">
+                                <div key={i} className="flex items-center justify-between gap-4 group">
+                                    <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium group-hover:text-primary transition-colors truncate">{item.name}</p>
                                         <p className="text-xs text-muted-foreground">{item.type}</p>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 shrink-0">
                                         <span className="text-sm font-bold">{item.views}</span>
                                         <span className="text-xs text-muted-foreground">views</span>
                                     </div>

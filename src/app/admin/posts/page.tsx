@@ -105,22 +105,22 @@ export default function PostsPage() {
               {posts.map((post) => (
                 <div
                   key={post.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+                  className="flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors gap-4"
                 >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold">{post.title}</h3>
-                      <Badge variant={post.status === 'published' ? 'default' : 'secondary'}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <h3 className="font-semibold truncate max-w-full">{post.title}</h3>
+                      <Badge variant={post.status === 'published' ? 'default' : 'secondary'} className="shrink-0">
                         {post.status}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>By {post.profiles?.full_name || 'Unknown'}</span>
-                      <span>•</span>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                      <span className="truncate">By {post.profiles?.full_name || 'Unknown'}</span>
+                      <span className="hidden sm:inline">•</span>
                       <span>{format(new Date(post.created_at), 'MMM dd, yyyy')}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 self-end md:self-auto shrink-0">
                     {post.status === 'published' && (
                       <Link href={`/blog/${post.slug}`} target="_blank">
                         <Button variant="ghost" size="sm" title="View live">

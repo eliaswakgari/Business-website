@@ -278,81 +278,83 @@ export default function UsersManagement() {
                 </Dialog>
             </div>
 
-            <div className="border rounded-lg bg-white dark:bg-slate-950">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>User</TableHead>
-                            <TableHead>Role</TableHead>
-                            <TableHead>Joined</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {users.length > 0 ? (
-                            users.map((user) => (
-                                <TableRow key={user.id}>
-                                    <TableCell>
-                                        <div className="flex items-center gap-3">
-                                            <Avatar>
-                                                <AvatarImage src={user.avatar_url || ''} />
-                                                <AvatarFallback>{(user.full_name?.[0] || user.email?.[0] || '?').toUpperCase()}</AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                                <div className="font-medium">{user.full_name || 'Pending...'}</div>
-                                                <div className="text-sm text-muted-foreground">{user.email}</div>
+            <div className="border rounded-lg bg-white dark:bg-slate-950 overflow-x-auto">
+                <div className="min-w-[800px]">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>User</TableHead>
+                                <TableHead>Role</TableHead>
+                                <TableHead>Joined</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {users.length > 0 ? (
+                                users.map((user) => (
+                                    <TableRow key={user.id}>
+                                        <TableCell>
+                                            <div className="flex items-center gap-3">
+                                                <Avatar>
+                                                    <AvatarImage src={user.avatar_url || ''} />
+                                                    <AvatarFallback>{(user.full_name?.[0] || user.email?.[0] || '?').toUpperCase()}</AvatarFallback>
+                                                </Avatar>
+                                                <div>
+                                                    <div className="font-medium">{user.full_name || 'Pending...'}</div>
+                                                    <div className="text-sm text-muted-foreground">{user.email}</div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge
-                                            variant="outline"
-                                            className={
-                                                user.role === 'admin' ? 'border-purple-500 text-purple-600 bg-purple-50 dark:bg-purple-900/20' :
-                                                    user.role === 'editor' ? 'border-blue-500 text-blue-600 bg-blue-50 dark:bg-blue-900/20' :
-                                                        'border-slate-500 text-slate-600 bg-slate-50 dark:bg-slate-900/20'
-                                            }
-                                        >
-                                            {user.role}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-muted-foreground text-sm">
-                                        {new Date(user.created_at).toLocaleDateString()}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2">
-                                            {!user.full_name && (
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge
+                                                variant="outline"
+                                                className={
+                                                    user.role === 'admin' ? 'border-purple-500 text-purple-600 bg-purple-50 dark:bg-purple-900/20' :
+                                                        user.role === 'editor' ? 'border-blue-500 text-blue-600 bg-blue-50 dark:bg-blue-900/20' :
+                                                            'border-slate-500 text-slate-600 bg-slate-50 dark:bg-slate-900/20'
+                                                }
+                                            >
+                                                {user.role}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground text-sm">
+                                            {new Date(user.created_at).toLocaleDateString()}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex justify-end gap-2">
+                                                {!user.full_name && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleGetLink(user.email)}
+                                                        title="Copy Magic Link"
+                                                        className="text-primary hover:text-primary hover:bg-primary/10"
+                                                    >
+                                                        <Link2 className="h-4 w-4" />
+                                                    </Button>
+                                                )}
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    onClick={() => handleGetLink(user.email)}
-                                                    title="Copy Magic Link"
-                                                    className="text-primary hover:text-primary hover:bg-primary/10"
+                                                    onClick={() => handleDelete(user.id)}
+                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                                 >
-                                                    <Link2 className="h-4 w-4" />
+                                                    <Trash2 className="h-4 w-4" />
                                                 </Button>
-                                            )}
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => handleDelete(user.id)}
-                                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="text-center py-12 text-muted-foreground">
+                                        No users found.
                                     </TableCell>
                                 </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={4} className="text-center py-12 text-muted-foreground">
-                                    No users found.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
             </div>
         </div>
     );
