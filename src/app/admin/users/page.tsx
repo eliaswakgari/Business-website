@@ -98,13 +98,23 @@ export default function UsersManagement() {
             const result = await inviteUser(email, role);
 
             if (result.error) {
+                // Show error message
                 toast.error(result.error);
+
+                // Close modal after 2 seconds on error
+                setTimeout(() => {
+                    setInviteOpen(false);
+                    setEmail('');
+                    setRole('viewer');
+                }, 2000);
             } else if (result.success) {
-                toast.success('User invited!');
-                // Don't close modal immediately, show success state
+                // Show success message
+                toast.success('Invitation sent successfully! 🎉');
+
+                // Show success state with link
                 setSuccessLink(result.inviteLink || null);
 
-                // Still copy to clipboard as a convenience
+                // Copy to clipboard as a convenience
                 if (result.inviteLink) {
                     navigator.clipboard.writeText(result.inviteLink).catch(() => { });
                 }
@@ -112,10 +122,24 @@ export default function UsersManagement() {
                 setEmail('');
                 setRole('viewer');
                 fetchUsers();
+
+                // Automatically close modal after 3 seconds on success
+                setTimeout(() => {
+                    setInviteOpen(false);
+                    setSuccessLink(null);
+                }, 3000);
             }
         } catch (err: any) {
+            // Show error message for unexpected errors
             toast.error('An unexpected error occurred');
             console.error(err);
+
+            // Close modal after 2 seconds on error
+            setTimeout(() => {
+                setInviteOpen(false);
+                setEmail('');
+                setRole('viewer');
+            }, 2000);
         } finally {
             setInviting(false);
         }
@@ -192,9 +216,9 @@ export default function UsersManagement() {
                                     <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
                                         <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
                                     </div>
-                                    <DialogTitle>Invitation Generated</DialogTitle>
+                                    <DialogTitle>Invitation Sent! ✉️</DialogTitle>
                                     <DialogDescription>
-                                        The user has been added to the database. If they don't receive the email, you can share this link manually.
+                                        An invitation email has been sent to the user. They will receive a link to set up their account. This modal will close automatically.
                                     </DialogDescription>
                                 </div>
                                 <div className="flex items-center gap-2 p-3 bg-muted rounded-lg border">
