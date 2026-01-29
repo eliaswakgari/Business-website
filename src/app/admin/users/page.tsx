@@ -26,7 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Trash2, Loader2, Mail, Shield, User, CheckCircle2, Copy, Link2, Edit2, RefreshCw } from 'lucide-react';
-import { inviteUser, getInviteLink } from './actions';
+import { inviteUser, getInviteLink, createUserDirectly } from './actions';
 import { toast } from 'sonner';
 
 export default function UsersManagement() {
@@ -35,13 +35,16 @@ export default function UsersManagement() {
     const [inviteOpen, setInviteOpen] = useState(false);
     const [inviting, setInviting] = useState(false);
     const [editMode, setEditMode] = useState(false);
+    const [inviteMode, setInviteMode] = useState<'invite' | 'create'>('invite');
     const [selectedUser, setSelectedUser] = useState<any>(null);
 
     // Invite Form State
     const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [role, setRole] = useState<'admin' | 'editor' | 'viewer'>('viewer');
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
     const [successLink, setSuccessLink] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<boolean>(false);
 
     const supabase = createClient();
     const router = useRouter();
@@ -110,8 +113,15 @@ export default function UsersManagement() {
                     setRole('viewer');
                 }, 2000);
             } else if (result.success) {
-                // Show success message
-                toast.success('Invitation sent successfully! 🎉');
+                // Log to console as requested
+                if (result.emailSent) {
+                    console.log('✅ Success: User invited and email sent successfully.');
+                    toast.success('Invitation sent successfully! 🎉');
+                } else {
+                    console.error('⚠️ Warning: User created but email failed to send.');
+                    console.error('Email Error:', result.emailError);
+                    toast.warning('User created, but email failed. Please share the link manually.');
+                }
 
                 // Show success state with link
                 setSuccessLink(result.inviteLink || null);
@@ -125,11 +135,11 @@ export default function UsersManagement() {
                 setRole('viewer');
                 fetchUsers();
 
-                // Automatically close modal after 3 seconds on success
+                // Automatically close modal after 5 seconds on success (longer to let them see the link)
                 setTimeout(() => {
                     setInviteOpen(false);
                     setSuccessLink(null);
-                }, 3000);
+                }, 5000);
             }
         } catch (err: any) {
             // Show error message for unexpected errors
@@ -234,10 +244,37 @@ export default function UsersManagement() {
     const handleCloseModal = () => {
         setInviteOpen(false);
         setEditMode(false);
+        setInviteMode('invite');
         setSelectedUser(null);
         setSuccessLink(null);
+        setSuccessMessage(false);
         setEmail('');
+        setPassword('');
         setRole('viewer');
+    };
+
+    const handleCreateDirectly = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setInviting(true);
+
+        try {
+            const result = await createUserDirectly(email, password, role);
+
+            if (result.error) {
+                toast.error(result.error);
+            } else if (result.success) {
+                toast.success('User created successfully! 🎉');
+                setSuccessMessage(true);
+                fetchUsers();
+
+                // Do NOT close automatically, let admin copy details
+            }
+        } catch (err: any) {
+            toast.error('An unexpected error occurred');
+            console.error(err);
+        } finally {
+            setInviting(false);
+        }
     };
 
     if (loading || currentUserRole !== 'admin') {
@@ -274,42 +311,76 @@ export default function UsersManagement() {
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[425px]">
                         <DialogHeader>
-                            <DialogTitle>{editMode ? 'Edit User Details' : 'Invite a Team Member'}</DialogTitle>
+                            <DialogTitle>
+                                {editMode ? 'Edit User Details' : (
+                                    <div className="flex items-center gap-4">
+                                        <span onClick={() => !editMode && setInviteMode('invite')} className={`cursor-pointer ${inviteMode === 'invite' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                            Invite User
+                                        </span>
+                                        <span className="text-muted-foreground">|</span>
+                                        <span onClick={() => !editMode && setInviteMode('create')} className={`cursor-pointer ${inviteMode === 'create' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                            Create User
+                                        </span>
+                                    </div>
+                                )}
+                            </DialogTitle>
                             <DialogDescription>
                                 {editMode
                                     ? 'Update user role or resend invitation.'
-                                    : 'Send an invitation email to a new user. They will be able to set their password.'}
+                                    : inviteMode === 'invite'
+                                        ? 'Send an invitation email to a new user.'
+                                        : 'Create a user immediately with a password. No email needed.'}
                             </DialogDescription>
                         </DialogHeader>
-                        {successLink ? (
+
+                        {successLink || (inviteMode === 'create' && successMessage) ? (
                             <div className="py-6 space-y-6">
                                 <div className="text-center space-y-2">
                                     <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
                                         <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
                                     </div>
-                                    <DialogTitle>{editMode ? 'Link Generated! 🔗' : 'Invitation Sent! ✉️'}</DialogTitle>
+                                    <DialogTitle>{inviteMode === 'create' ? 'User Created! 🎉' : 'Link Generated! 🔗'}</DialogTitle>
                                     <DialogDescription>
-                                        {editMode
-                                            ? 'The invitation link has been generated. Ensure the user checks their spam folder.'
-                                            : 'An invitation email has been sent. This modal will close automatically.'}
+                                        {inviteMode === 'create'
+                                            ? 'User created successfully. You can now share the credentials.'
+                                            : 'The invitation link matches the specific failure mode.'}
                                     </DialogDescription>
                                 </div>
-                                <div className="flex items-center gap-2 p-3 bg-muted rounded-lg border">
-                                    <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                    <code className="text-[10px] break-all flex-1 font-mono">{successLink}</code>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(successLink);
-                                            toast.success('Link copied!');
-                                        }}
-                                    >
-                                        <Copy className="h-4 w-4" />
-                                    </Button>
-                                </div>
+
+                                {inviteMode === 'create' && (
+                                    <div className="p-4 bg-muted rounded-lg space-y-2 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Email:</span>
+                                            <span className="font-medium">{email}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Password:</span>
+                                            <span className="font-medium">{password}</span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground pt-2 text-center">
+                                            Copy these details now. The password will not be shown again.
+                                        </p>
+                                    </div>
+                                )}
+
+                                {successLink && (
+                                    <div className="flex items-center gap-2 p-3 bg-muted rounded-lg border">
+                                        <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                        <code className="text-[10px] break-all flex-1 font-mono">{successLink}</code>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(successLink!);
+                                                toast.success('Link copied!');
+                                            }}
+                                        >
+                                            <Copy className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                )}
                                 <DialogFooter>
                                     <Button type="button" className="w-full" onClick={handleCloseModal}>
                                         Done
@@ -317,7 +388,7 @@ export default function UsersManagement() {
                                 </DialogFooter>
                             </div>
                         ) : (
-                            <form onSubmit={editMode ? handleUpdateUser : handleInvite} className="space-y-4 py-4">
+                            <form onSubmit={editMode ? handleUpdateUser : (inviteMode === 'create' ? handleCreateDirectly : handleInvite)} className="space-y-4 py-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="email">Email address</Label>
                                     <Input
@@ -336,6 +407,25 @@ export default function UsersManagement() {
                                         </p>
                                     )}
                                 </div>
+
+                                {inviteMode === 'create' && !editMode && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="password">Password</Label>
+                                        <Input
+                                            id="password"
+                                            type="text"
+                                            placeholder="Set a password"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            required
+                                            minLength={6}
+                                        />
+                                        <p className="text-[10px] text-muted-foreground">
+                                            Min 6 chars. You will share this with the user.
+                                        </p>
+                                    </div>
+                                )}
+
                                 <div className="space-y-2">
                                     <Label htmlFor="role">Role</Label>
                                     <Select value={role} onValueChange={(val: any) => setRole(val)}>
@@ -385,10 +475,10 @@ export default function UsersManagement() {
                                         {inviting ? (
                                             <>
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                {editMode ? 'Updating...' : 'Sending Invite...'}
+                                                {editMode ? 'Updating...' : (inviteMode === 'create' ? 'Creating User...' : 'Sending Invite...')}
                                             </>
                                         ) : (
-                                            editMode ? 'Update User' : 'Send Invitation'
+                                            editMode ? 'Update User' : (inviteMode === 'create' ? 'Create User' : 'Send Invitation')
                                         )}
                                     </Button>
                                 </DialogFooter>
