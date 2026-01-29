@@ -281,7 +281,10 @@ export default function UsersManagement() {
                 setSuccessMessage(true);
                 fetchUsers();
 
-                // Do NOT close automatically, let admin copy details
+                // Close modal after short delay as requested
+                setTimeout(() => {
+                    handleCloseModal();
+                }, 1500);
             }
         } catch (err: any) {
             toast.error('An unexpected error occurred');
