@@ -198,7 +198,7 @@ export async function getInviteLink(email: string) {
 
     if (linkError) return { error: linkError.message };
 
-    return { inviteLink: data?.properties?.action_link };
+    return { inviteLink: linkData?.properties?.action_link };
 }
 
 export async function createUserDirectly(email: string, password: string, role: 'admin' | 'editor' | 'viewer') {
