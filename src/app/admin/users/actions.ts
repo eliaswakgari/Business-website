@@ -269,3 +269,28 @@ export async function createUserDirectly(email: string, password: string, role: 
     revalidatePath('/admin/users');
     return { success: true, message: 'User created successfully.' };
 }
+
+export async function resetUserPassword(userId: string, newPassword: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: 'Not authenticated' };
+
+    const { data: curProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+    if (curProfile?.role !== 'admin') return { error: 'Unauthorized' };
+
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceRoleKey) return { error: 'Configuration error' };
+
+    const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
+    const adminClient = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false }
+    });
+
+    const { error } = await adminClient.auth.admin.updateUserById(userId, {
+        password: newPassword
+    });
+
+    if (error) return { error: 'Failed to reset password: ' + error.message };
+
+    return { success: true };
+}
