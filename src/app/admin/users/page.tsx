@@ -35,7 +35,6 @@ export default function UsersManagement() {
     const [inviteOpen, setInviteOpen] = useState(false);
     const [inviting, setInviting] = useState(false);
     const [editMode, setEditMode] = useState(false);
-    const [editTab, setEditTab] = useState<'details' | 'security'>('details');
     const [inviteMode, setInviteMode] = useState<'invite' | 'create'>('create');
     const [selectedUser, setSelectedUser] = useState<any>(null);
 
@@ -188,9 +187,28 @@ export default function UsersManagement() {
     const handleUpdateUser = async (e: React.FormEvent) => {
         e.preventDefault();
         setInviting(true);
+        setFieldErrors({});
 
         try {
-            // Update user role in profiles table
+            // 1. Update Password if provided
+            if (password.trim()) {
+                const check = validatePassword(password);
+                if (!check.valid) {
+                    setFieldErrors(prev => ({ ...prev, password: check.message }));
+                    setInviting(false);
+                    return;
+                }
+
+                const res = await resetUserPassword(selectedUser.id, password);
+                if (res.error) {
+                    setFieldErrors(prev => ({ ...prev, password: res.error }));
+                    setInviting(false);
+                    return;
+                }
+                toast.success('Password updated! 🔑');
+            }
+
+            // 2. Update Role
             const { error } = await supabase
                 .from('profiles')
                 .update({
@@ -200,19 +218,15 @@ export default function UsersManagement() {
                 .eq('id', selectedUser.id);
 
             if (error) {
-                toast.error('Failed to update user: ' + error.message);
+                toast.error('Failed to update role: ' + error.message);
             } else {
                 toast.success('User updated successfully! 🎉');
                 fetchUsers();
 
-                // Close modal after 2 seconds
+                // Close modal after short delay
                 setTimeout(() => {
-                    setInviteOpen(false);
-                    setEditMode(false);
-                    setSelectedUser(null);
-                    setEmail('');
-                    setRole('viewer');
-                }, 2000);
+                    handleCloseModal();
+                }, 1500);
             }
         } catch (err: any) {
             toast.error('An unexpected error occurred');
@@ -337,21 +351,7 @@ export default function UsersManagement() {
                     <DialogContent className="sm:max-w-[425px]">
                         <DialogHeader>
                             <DialogTitle>
-                                {editMode ? (
-                                    <div className="flex items-center gap-4">
-                                        <span onClick={() => setEditTab('details')} className={`cursor-pointer ${editTab === 'details' ? 'text-foreground' : 'text-muted-foreground'}`}>
-                                            Edit Details
-                                        </span>
-                                        <span className="text-muted-foreground">|</span>
-                                        <span onClick={() => {
-                                            setEditTab('security');
-                                            setPassword(''); // Clear pass when switching
-                                            setFieldErrors({});
-                                        }} className={`cursor-pointer ${editTab === 'security' ? 'text-foreground' : 'text-muted-foreground'}`}>
-                                            Security
-                                        </span>
-                                    </div>
-                                ) : (
+                                {editMode ? 'Edit User' : (
                                     <div className="flex items-center gap-4">
                                         <span onClick={() => !editMode && setInviteMode('invite')} className={`cursor-pointer ${inviteMode === 'invite' ? 'text-foreground' : 'text-muted-foreground'}`}>
                                             Invite User
@@ -365,7 +365,7 @@ export default function UsersManagement() {
                             </DialogTitle>
                             <DialogDescription>
                                 {editMode
-                                    ? 'Update user role or resend invitation.'
+                                    ? 'Update user role or password.'
                                     : inviteMode === 'invite'
                                         ? 'Send an invitation email to a new user.'
                                         : 'Create a user immediately with a password. No email needed.'}
@@ -428,120 +428,79 @@ export default function UsersManagement() {
                             </div>
                         ) : (
                             <form onSubmit={editMode ? handleUpdateUser : (inviteMode === 'create' ? handleCreateDirectly : handleInvite)} className="space-y-4 py-4">
-                                {(editMode && editTab === 'security') ? (
-                                    // SECURITY TAB (Reset Password)
-                                    <div className="space-y-2">
-                                        <Label htmlFor="password">New Password</Label>
-                                        <Input
-                                            id="password"
-                                            type="text"
-                                            placeholder="Set a new password"
-                                            value={password}
-                                            onChange={(e) => {
-                                                setPassword(e.target.value);
-                                                if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: undefined }));
-                                            }}
-                                            required
-                                            minLength={6}
-                                            className={fieldErrors.password ? "border-red-500" : ""}
-                                        />
-                                        {fieldErrors.password ? (
-                                            <p className="text-[11px] text-red-500 font-medium">{fieldErrors.password}</p>
-                                        ) : (
-                                            <p className="text-[10px] text-muted-foreground">
-                                                Min 8 chars, Uppercase & Number required.
-                                            </p>
-                                        )}
-                                    </div>
-                                ) : (
-                                    ////////////////////////////////////
-                                    // STANDARD FORM (Invite/Create/Edit Details)
-                                    <>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="email">Email address</Label>
-                                            <Input
-                                                id="email"
-                                                type="email"
-                                                placeholder="colleague@company.com"
-                                                value={email}
-                                                onChange={(e) => {
-                                                    setEmail(e.target.value);
-                                                    if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: undefined }));
-                                                }}
-                                                required
-                                                disabled={editMode}
-                                                className={`
-                                                    ${editMode ? "bg-muted" : ""} 
-                                                    ${fieldErrors.email ? "border-red-500" : ""}
-                                                `}
-                                            />
-                                            {fieldErrors.email ? (
-                                                <p className="text-[11px] text-red-500 font-medium">{fieldErrors.email}</p>
-                                            ) : (
-                                                editMode && (
-                                                    <p className="text-[10px] text-muted-foreground">Email cannot be changed.</p>
-                                                )
-                                            )}
-                                        </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="email">Email address</Label>
+                                    <Input
+                                        id="email"
+                                        type="email"
+                                        placeholder="colleague@company.com"
+                                        value={email}
+                                        onChange={(e) => {
+                                            setEmail(e.target.value);
+                                            if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: undefined }));
+                                        }}
+                                        required
+                                        disabled={editMode}
+                                        className={`${editMode ? "bg-muted cursor-not-allowed" : ""} ${fieldErrors.email ? "border-red-500" : ""}`}
+                                    />
+                                    {fieldErrors.email && <p className="text-[11px] text-red-500 font-medium">{fieldErrors.email}</p>}
+                                    {editMode && !fieldErrors.email && <p className="text-[10px] text-muted-foreground">Email cannot be changed.</p>}
+                                </div>
 
-                                        {inviteMode === 'create' && !editMode && (
-                                            <div className="space-y-2">
-                                                <Label htmlFor="password">Password</Label>
-                                                <Input
-                                                    id="password"
-                                                    type="text"
-                                                    placeholder="Set a password"
-                                                    value={password}
-                                                    onChange={(e) => {
-                                                        setPassword(e.target.value);
-                                                        if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: undefined }));
-                                                    }}
-                                                    required
-                                                    minLength={6}
-                                                    className={fieldErrors.password ? "border-red-500" : ""}
-                                                />
-                                                {fieldErrors.password ? (
-                                                    <p className="text-[11px] text-red-500 font-medium">{fieldErrors.password}</p>
-                                                ) : (
-                                                    <p className="text-[10px] text-muted-foreground">
-                                                        Min 8 chars, Uppercase & Number required.
-                                                    </p>
-                                                )}
-                                            </div>
-                                        )}
+                                <div className="space-y-2">
+                                    <Label htmlFor="password">{editMode ? 'New Password (Optional)' : 'Password'}</Label>
+                                    <Input
+                                        id="password"
+                                        type="text"
+                                        placeholder={editMode ? "Leave empty to keep current" : "Set a password"}
+                                        value={password}
+                                        onChange={(e) => {
+                                            setPassword(e.target.value);
+                                            if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: undefined }));
+                                        }}
+                                        required={!editMode}
+                                        minLength={8}
+                                        className={fieldErrors.password ? "border-red-500" : ""}
+                                    />
+                                    {fieldErrors.password ? (
+                                        <p className="text-[11px] text-red-500 font-medium">{fieldErrors.password}</p>
+                                    ) : (
+                                        <p className="text-[10px] text-muted-foreground">
+                                            Min 8 chars, Uppercase & Number required.
+                                        </p>
+                                    )}
+                                </div>
 
-                                        <div className="space-y-2">
-                                            <Label htmlFor="role">Role</Label>
-                                            <Select value={role} onValueChange={(val: any) => setRole(val)}>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select a role" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="viewer">
-                                                        <div className="flex items-center">
-                                                            <User className="mr-2 h-4 w-4 text-muted-foreground" />
-                                                            <span>Viewer (Read only)</span>
-                                                        </div>
-                                                    </SelectItem>
-                                                    <SelectItem value="editor">
-                                                        <div className="flex items-center">
-                                                            <FileText className="mr-2 h-4 w-4 text-muted-foreground" />
-                                                            <span>Editor (Can manage content)</span>
-                                                        </div>
-                                                    </SelectItem>
-                                                    <SelectItem value="admin">
-                                                        <div className="flex items-center">
-                                                            <Shield className="mr-2 h-4 w-4 text-muted-foreground" />
-                                                            <span>Admin (Full access)</span>
-                                                        </div>
-                                                    </SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </>
-                                )}
+                                <div className="space-y-2">
+                                    <Label htmlFor="role">Role</Label>
+                                    <Select value={role} onValueChange={(val: any) => setRole(val)}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a role" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="viewer">
+                                                <div className="flex items-center">
+                                                    <User className="mr-2 h-4 w-4 text-muted-foreground" />
+                                                    <span>Viewer (Read only)</span>
+                                                </div>
+                                            </SelectItem>
+                                            <SelectItem value="editor">
+                                                <div className="flex items-center">
+                                                    <FileText className="mr-2 h-4 w-4 text-muted-foreground" />
+                                                    <span>Editor (Can manage content)</span>
+                                                </div>
+                                            </SelectItem>
+                                            <SelectItem value="admin">
+                                                <div className="flex items-center">
+                                                    <Shield className="mr-2 h-4 w-4 text-muted-foreground" />
+                                                    <span>Admin (Full access)</span>
+                                                </div>
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
 
-                                {editMode && editTab === 'details' && (
+                                {editMode && (
                                     <div className="pt-2">
                                         <Button
                                             type="button"
@@ -561,14 +520,10 @@ export default function UsersManagement() {
                                         {inviting ? (
                                             <>
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                {editMode
-                                                    ? (editTab === 'security' ? 'Updating Password...' : 'Updating...')
-                                                    : (inviteMode === 'create' ? 'Creating User...' : 'Sending Invite...')}
+                                                {editMode ? 'Updating...' : (inviteMode === 'create' ? 'Creating User...' : 'Sending Invite...')}
                                             </>
                                         ) : (
-                                            editMode
-                                                ? (editTab === 'security' ? 'Update Password' : 'Update User')
-                                                : (inviteMode === 'create' ? 'Create User' : 'Send Invitation')
+                                            editMode ? 'Update User' : (inviteMode === 'create' ? 'Create User' : 'Send Invitation')
                                         )}
                                     </Button>
                                 </DialogFooter>
