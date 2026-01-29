@@ -253,8 +253,22 @@ export default function UsersManagement() {
         setRole('viewer');
     };
 
+    const validatePassword = (pass: string) => {
+        if (pass.length < 8) return { valid: false, message: 'Password must be 8+ chars' };
+        if (!/[A-Z]/.test(pass)) return { valid: false, message: 'Password must have uppercase' };
+        if (!/[0-9]/.test(pass)) return { valid: false, message: 'Password must have number' };
+        return { valid: true };
+    };
+
     const handleCreateDirectly = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        const check = validatePassword(password);
+        if (!check.valid) {
+            toast.error(check.message);
+            return;
+        }
+
         setInviting(true);
 
         try {
@@ -423,7 +437,7 @@ export default function UsersManagement() {
                                             minLength={6}
                                         />
                                         <p className="text-[10px] text-muted-foreground">
-                                            Min 6 chars. You will share this with the user.
+                                            Min 8 chars, Uppercase & Number required.
                                         </p>
                                     </div>
                                 )}
