@@ -35,7 +35,7 @@ export default function UsersManagement() {
     const [inviteOpen, setInviteOpen] = useState(false);
     const [inviting, setInviting] = useState(false);
     const [editMode, setEditMode] = useState(false);
-    const [inviteMode, setInviteMode] = useState<'invite' | 'create'>('invite');
+    const [inviteMode, setInviteMode] = useState<'invite' | 'create'>('create');
     const [selectedUser, setSelectedUser] = useState<any>(null);
 
     // Invite Form State
@@ -303,10 +303,12 @@ export default function UsersManagement() {
                         <Button onClick={() => {
                             setEditMode(false);
                             setEmail('');
+                            setPassword('');
                             setRole('viewer');
+                            setInviteMode('create');
                         }}>
                             <Plus className="h-4 w-4 mr-2" />
-                            Invite User
+                            Create User
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[425px]">
