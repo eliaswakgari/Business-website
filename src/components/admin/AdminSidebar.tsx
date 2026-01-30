@@ -31,26 +31,23 @@ interface AdminSidebarProps {
 }
 
 const getNavigation = (role: Role) => {
-  // ... (keeping same navigation logic)
   const allNav = [
-    { name: 'Dashboard', href: '/admin', icon: LayoutDashboard, requiredRole: null },
-    { name: 'Posts', href: '/admin/posts', icon: FileText, requiredRole: null },
-    { name: 'Pages', href: '/admin/pages', icon: File, requiredRole: null },
-    { name: 'Services', href: '/admin/services', icon: Briefcase, requiredRole: null },
-    { name: 'Team', href: '/admin/team', icon: Users, requiredRole: null },
-    { name: 'Users', href: '/admin/users', icon: Users, requiredRole: 'admin' },
-    { name: 'Testimonials', href: '/admin/testimonials', icon: Star, requiredRole: null },
-    { name: 'FAQs', href: '/admin/faqs', icon: HelpCircle, requiredRole: null },
-    { name: 'Case Studies', href: '/admin/case-studies', icon: FolderOpen, requiredRole: null },
-    { name: 'Contacts', href: '/admin/contacts', icon: MessageSquare, requiredRole: null },
-    { name: 'Analytics', href: '/admin/analytics', icon: BarChart3, requiredRole: null },
-    { name: 'Settings', href: '/admin/settings', icon: Settings, requiredRole: null },
+    { name: 'Dashboard', href: '/admin', icon: LayoutDashboard, roles: ['admin', 'editor', 'viewer'] },
+    { name: 'Posts', href: '/admin/posts', icon: FileText, roles: ['admin', 'editor'] },
+    { name: 'Pages', href: '/admin/pages', icon: File, roles: ['admin', 'editor'] },
+    { name: 'Services', href: '/admin/services', icon: Briefcase, roles: ['admin', 'editor'] },
+    { name: 'Team', href: '/admin/team', icon: Users, roles: ['admin', 'editor'] },
+    { name: 'Users', href: '/admin/users', icon: Users, roles: ['admin'] },
+    { name: 'Testimonials', href: '/admin/testimonials', icon: Star, roles: ['admin', 'editor'] },
+    { name: 'FAQs', href: '/admin/faqs', icon: HelpCircle, roles: ['admin', 'editor'] },
+    { name: 'Case Studies', href: '/admin/case-studies', icon: FolderOpen, roles: ['admin', 'editor'] },
+    { name: 'Contacts', href: '/admin/contacts', icon: MessageSquare, roles: ['admin', 'editor'] },
+    { name: 'Analytics', href: '/admin/analytics', icon: BarChart3, roles: ['admin'] },
+    { name: 'Settings', href: '/admin/settings', icon: Settings, roles: ['admin', 'editor', 'viewer'] },
   ];
 
-  return allNav.filter(item => {
-    if (item.requiredRole === 'admin') return canManageUsers(role);
-    return true;
-  });
+  // Filter navigation items based on user role
+  return allNav.filter(item => item.roles.includes(role));
 };
 
 export default function AdminSidebar({ user, profile }: AdminSidebarProps) {

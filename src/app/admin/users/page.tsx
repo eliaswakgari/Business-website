@@ -35,6 +35,7 @@ export default function UsersManagement() {
     const [inviteOpen, setInviteOpen] = useState(false);
     const [inviting, setInviting] = useState(false);
     const [editMode, setEditMode] = useState(false);
+    const [editTab, setEditTab] = useState<'update' | 'invite'>('update');
     const [inviteMode, setInviteMode] = useState<'invite' | 'create'>('create');
     const [selectedUser, setSelectedUser] = useState<any>(null);
 
@@ -178,6 +179,7 @@ export default function UsersManagement() {
 
     const handleEditUser = (user: any) => {
         setEditMode(true);
+        setEditTab('update');
         setSelectedUser(user);
         setEmail(user.email);
         setRole(user.role);
@@ -190,25 +192,7 @@ export default function UsersManagement() {
         setFieldErrors({});
 
         try {
-            // 1. Update Password if provided
-            if (password.trim()) {
-                const check = validatePassword(password);
-                if (!check.valid) {
-                    setFieldErrors(prev => ({ ...prev, password: check.message }));
-                    setInviting(false);
-                    return;
-                }
-
-                const res = await resetUserPassword(selectedUser.id, password);
-                if (res.error) {
-                    setFieldErrors(prev => ({ ...prev, password: res.error }));
-                    setInviting(false);
-                    return;
-                }
-                toast.success('Password updated! 🔑');
-            }
-
-            // 2. Update Role
+            // Update Role only (admin cannot change password)
             const { error } = await supabase
                 .from('profiles')
                 .update({
@@ -220,13 +204,16 @@ export default function UsersManagement() {
             if (error) {
                 toast.error('Failed to update role: ' + error.message);
             } else {
-                toast.success('User updated successfully! 🎉');
-                fetchUsers();
+                toast.success('User role updated successfully! ✅');
+                setSuccessMessage(true);
 
-                // Close modal after short delay
+                // Wait for users to be refreshed
+                await fetchUsers();
+
+                // Auto-close after 2 seconds (giving time to read)
                 setTimeout(() => {
                     handleCloseModal();
-                }, 1500);
+                }, 2000);
             }
         } catch (err: any) {
             toast.error('An unexpected error occurred');
@@ -236,18 +223,47 @@ export default function UsersManagement() {
         }
     };
 
-    const handleResendLink = async () => {
+    const handleResendLink = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
         if (!selectedUser) return;
 
-        const result = await getInviteLink(selectedUser.email);
+        setInviting(true);
+        const result = await inviteUser(selectedUser.email, role);
+
         if (result.error) {
             toast.error(result.error);
-        } else if (result.inviteLink) {
-            setSuccessLink(result.inviteLink);
-            navigator.clipboard.writeText(result.inviteLink);
-            toast.success('Fresh invite link copied to clipboard!');
+        } else if (result.success) {
+            if (result.emailSent) {
+                toast.success('Invitation sent successfully! 🎉');
+            } else {
+                toast.warning('User updated, but email failed. Please share the link manually.');
+            }
+
+            setSuccessLink(result.inviteLink || null);
+            if (result.inviteLink) {
+                navigator.clipboard.writeText(result.inviteLink);
+            }
+
+            // Update the role in database
+            await supabase
+                .from('profiles')
+                .update({
+                    role: role,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', selectedUser.id);
+
+
+            // Wait for users to be refreshed before closing modal
+            await fetchUsers();
+
+            setTimeout(() => {
+                handleCloseModal();
+            }, 2000);
         }
+        setInviting(false);
     };
+
 
     const handleGetLink = async (email: string) => {
         const result = await getInviteLink(email);
@@ -262,7 +278,7 @@ export default function UsersManagement() {
     const handleCloseModal = () => {
         setInviteOpen(false);
         setEditMode(false);
-        setEditTab('details');
+        setEditTab('update');
         setInviteMode('create');
         setSelectedUser(null);
         setSuccessLink(null);
@@ -351,7 +367,17 @@ export default function UsersManagement() {
                     <DialogContent className="sm:max-w-[425px]">
                         <DialogHeader>
                             <DialogTitle>
-                                {editMode ? 'Edit User' : (
+                                {editMode ? (
+                                    <div className="flex items-center gap-4">
+                                        <span onClick={() => setEditTab('update')} className={`cursor-pointer ${editTab === 'update' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                            Update User
+                                        </span>
+                                        <span className="text-muted-foreground">|</span>
+                                        <span onClick={() => setEditTab('invite')} className={`cursor-pointer ${editTab === 'invite' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                            Invite User
+                                        </span>
+                                    </div>
+                                ) : (
                                     <div className="flex items-center gap-4">
                                         <span onClick={() => !editMode && setInviteMode('invite')} className={`cursor-pointer ${inviteMode === 'invite' ? 'text-foreground' : 'text-muted-foreground'}`}>
                                             Invite User
@@ -365,24 +391,30 @@ export default function UsersManagement() {
                             </DialogTitle>
                             <DialogDescription>
                                 {editMode
-                                    ? 'Update user role or password.'
+                                    ? (editTab === 'update' ? 'Update user role.' : 'Resend invitation email to this user.')
                                     : inviteMode === 'invite'
                                         ? 'Send an invitation email to a new user.'
                                         : 'Create a user immediately with a password. No email needed.'}
                             </DialogDescription>
                         </DialogHeader>
 
-                        {successLink || (inviteMode === 'create' && successMessage) ? (
+                        {successLink || successMessage ? (
                             <div className="py-6 space-y-6">
                                 <div className="text-center space-y-2">
                                     <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
                                         <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
                                     </div>
-                                    <DialogTitle>{inviteMode === 'create' ? 'User Created! 🎉' : 'Link Generated! 🔗'}</DialogTitle>
+                                    <DialogTitle>
+                                        {successLink ? 'Link Generated! 🔗'
+                                            : inviteMode === 'create' && !editMode ? 'User Created! 🎉'
+                                                : 'Role Updated! ✅'}
+                                    </DialogTitle>
                                     <DialogDescription>
-                                        {inviteMode === 'create'
-                                            ? 'User created successfully. You can now share the credentials.'
-                                            : 'The invitation link matches the specific failure mode.'}
+                                        {successLink
+                                            ? 'The invitation link has been generated. You can copy it below.'
+                                            : inviteMode === 'create' && !editMode
+                                                ? 'User created successfully. You can now share the credentials.'
+                                                : 'User role has been updated successfully.'}
                                     </DialogDescription>
                                 </div>
 
@@ -427,7 +459,7 @@ export default function UsersManagement() {
                                 </DialogFooter>
                             </div>
                         ) : (
-                            <form onSubmit={editMode ? handleUpdateUser : (inviteMode === 'create' ? handleCreateDirectly : handleInvite)} className="space-y-4 py-4">
+                            <form onSubmit={editMode ? (editTab === 'update' ? handleUpdateUser : handleResendLink) : (inviteMode === 'create' ? handleCreateDirectly : handleInvite)} className="space-y-4 py-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="email">Email address</Label>
                                     <Input
@@ -447,29 +479,32 @@ export default function UsersManagement() {
                                     {editMode && !fieldErrors.email && <p className="text-[10px] text-muted-foreground">Email cannot be changed.</p>}
                                 </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="password">{editMode ? 'New Password (Optional)' : 'Password'}</Label>
-                                    <Input
-                                        id="password"
-                                        type="text"
-                                        placeholder={editMode ? "Leave empty to keep current" : "Set a password"}
-                                        value={password}
-                                        onChange={(e) => {
-                                            setPassword(e.target.value);
-                                            if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: undefined }));
-                                        }}
-                                        required={!editMode}
-                                        minLength={8}
-                                        className={fieldErrors.password ? "border-red-500" : ""}
-                                    />
-                                    {fieldErrors.password ? (
-                                        <p className="text-[11px] text-red-500 font-medium">{fieldErrors.password}</p>
-                                    ) : (
-                                        <p className="text-[10px] text-muted-foreground">
-                                            Min 8 chars, Uppercase & Number required.
-                                        </p>
-                                    )}
-                                </div>
+                                {/* Show password field only for Create User mode, never in edit mode */}
+                                {!editMode && inviteMode === 'create' && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="password">Password</Label>
+                                        <Input
+                                            id="password"
+                                            type="text"
+                                            placeholder="Set a password"
+                                            value={password}
+                                            onChange={(e) => {
+                                                setPassword(e.target.value);
+                                                if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: undefined }));
+                                            }}
+                                            required={inviteMode === 'create'}
+                                            minLength={8}
+                                            className={fieldErrors.password ? "border-red-500" : ""}
+                                        />
+                                        {fieldErrors.password ? (
+                                            <p className="text-[11px] text-red-500 font-medium">{fieldErrors.password}</p>
+                                        ) : (
+                                            <p className="text-[10px] text-muted-foreground">
+                                                Min 8 chars, Uppercase & Number required.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
 
                                 <div className="space-y-2">
                                     <Label htmlFor="role">Role</Label>
@@ -500,30 +535,19 @@ export default function UsersManagement() {
                                     </Select>
                                 </div>
 
-                                {editMode && (
-                                    <div className="pt-2">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            className="w-full text-muted-foreground hover:text-primary"
-                                            onClick={handleResendLink}
-                                        >
-                                            <RefreshCw className="mr-2 h-3 w-3" />
-                                            Resend Invitation Link
-                                        </Button>
-                                    </div>
-                                )}
-
                                 <DialogFooter>
                                     <Button type="submit" disabled={inviting} className="w-full">
                                         {inviting ? (
                                             <>
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                {editMode ? 'Updating...' : (inviteMode === 'create' ? 'Creating User...' : 'Sending Invite...')}
+                                                {editMode
+                                                    ? (editTab === 'update' ? 'Updating Role...' : 'Resending Invite...')
+                                                    : (inviteMode === 'create' ? 'Creating User...' : 'Sending Invite...')}
                                             </>
                                         ) : (
-                                            editMode ? 'Update User' : (inviteMode === 'create' ? 'Create User' : 'Send Invitation')
+                                            editMode
+                                                ? (editTab === 'update' ? 'Update Role' : 'Resend Invitation')
+                                                : (inviteMode === 'create' ? 'Create User' : 'Send Invitation')
                                         )}
                                     </Button>
                                 </DialogFooter>

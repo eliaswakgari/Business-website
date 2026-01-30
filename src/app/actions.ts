@@ -15,6 +15,21 @@ export async function fixAdminProfile() {
 
         const adminClient = createAdminClient();
 
+        const { data: existingProfile, error: existingProfileError } = await adminClient
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+
+        if (existingProfileError) {
+            console.error('Error fetching current profile:', existingProfileError);
+            return { success: false, error: existingProfileError.message };
+        }
+
+        if (existingProfile?.role !== 'admin') {
+            return { success: false, error: 'Unauthorized' };
+        }
+
         // Force upsert the profile with admin role
         const { error } = await adminClient
             .from('profiles')

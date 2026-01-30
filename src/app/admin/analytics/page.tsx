@@ -4,9 +4,26 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Eye, TrendingUp, TrendingDown, Users, Activity } from 'lucide-react';
 import { AnalyticsCharts } from './components/AnalyticsCharts';
 import { subDays, format, startOfDay, eachDayOfInterval } from 'date-fns';
+import { redirect } from 'next/navigation';
 
 export default async function AnalyticsPage() {
   const supabase = await createClient();
+
+  // Check if user is admin
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.role !== 'admin') {
+    redirect('/admin'); // Redirect non-admins to dashboard
+  }
 
   const now = new Date();
   const thirtyDaysAgo = subDays(now, 30);

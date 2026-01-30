@@ -193,6 +193,14 @@ CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles
 CREATE POLICY "Users can update own profile" ON public.profiles
   FOR UPDATE USING (auth.uid() = id);
 
+CREATE POLICY "Admins can update any profile" ON public.profiles
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
 -- Posts: Published posts are public, drafts only for authors/admins
 CREATE POLICY "Published posts are viewable by everyone" ON public.posts
   FOR SELECT USING (status = 'published' OR auth.uid() = author_id);
@@ -332,13 +340,46 @@ CREATE POLICY "Admins can manage site settings" ON public.site_settings
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name, avatar_url)
+  INSERT INTO public.profiles (id, email, full_name, avatar_url, role)
   VALUES (
     NEW.id,
     NEW.email,
     NEW.raw_user_meta_data->>'full_name',
-    NEW.raw_user_meta_data->>'avatar_url'
-  );
+    NEW.raw_user_meta_data->>'avatar_url',
+    COALESCE(NEW.raw_user_meta_data->>'invited_role', 'viewer')
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    full_name = COALESCE(EXCLUDED.full_name, public.profiles.full_name),
+    role = CASE 
+      -- If the existing role is 'viewer' and we have a specific invited role, update it
+      WHEN public.profiles.role = 'viewer' AND EXCLUDED.role != 'viewer' THEN EXCLUDED.role
+      -- Otherwise keep existing role to prevent downgrading admins/editors
+      ELSE public.profiles.role
+    END;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.prevent_profile_role_change()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.role IS DISTINCT FROM OLD.role THEN
+    IF auth.role() = 'service_role' THEN
+      RETURN NEW;
+    END IF;
+
+    IF EXISTS (
+      SELECT 1
+      FROM public.profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    ) THEN
+      RETURN NEW;
+    END IF;
+
+    RAISE EXCEPTION 'Only admins can change user roles';
+  END IF;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -347,6 +388,11 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+DROP TRIGGER IF EXISTS prevent_profile_role_change ON public.profiles;
+CREATE TRIGGER prevent_profile_role_change
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.prevent_profile_role_change();
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION public.handle_updated_at()

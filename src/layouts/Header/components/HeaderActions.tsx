@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ShieldAlert, Loader2 } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
@@ -17,7 +17,6 @@ export default function HeaderActions({
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -49,29 +48,6 @@ export default function HeaderActions({
     };
   }, []);
 
-  const handleClaimAdmin = async () => {
-    if (!user) return;
-    setUpdating(true);
-    try {
-      // Dynamically import the server action to avoid build issues if mixed
-      const { fixAdminProfile } = await import("@/app/actions");
-      const result = await fixAdminProfile();
-
-      if (result.success) {
-        setRole('admin');
-        window.location.href = '/admin'; // Force hard navigation to ensure clean state
-      } else {
-        console.error("Failed to update role", result.error);
-        alert("Failed to fix profile: " + result.error);
-      }
-    } catch (err) {
-      console.error(err);
-      alert("An unexpected error occurred");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
   if (loading) {
     return <div className="hidden md:flex items-center gap-4"><div className="h-9 w-24 bg-muted animate-pulse rounded"></div></div>;
   }
@@ -79,23 +55,12 @@ export default function HeaderActions({
   if (user) {
     return (
       <div className="flex items-center gap-4">
-        {role === 'admin' ? (
+        {role && (
           <Link href="/admin">
             <Button variant="outline" className="text-foreground">
               Dashboard
             </Button>
           </Link>
-        ) : (
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleClaimAdmin}
-            disabled={updating}
-            className="animate-pulse"
-          >
-            {updating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldAlert className="h-4 w-4 mr-2" />}
-            Claim Admin (Fix)
-          </Button>
         )}
 
         <Button

@@ -22,6 +22,16 @@ DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" ON public.profiles
   FOR UPDATE USING (auth.uid() = id);
 
+-- Allow admins to update any profile (for role management)
+DROP POLICY IF EXISTS "Admins can update any profile" ON public.profiles;
+CREATE POLICY "Admins can update any profile" ON public.profiles
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
 -- Posts: Published posts are public, drafts only for authors/admins
 DROP POLICY IF EXISTS "Published posts are viewable by everyone" ON public.posts;
 CREATE POLICY "Published posts are viewable by everyone" ON public.posts
