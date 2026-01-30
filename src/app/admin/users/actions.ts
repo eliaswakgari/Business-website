@@ -1,6 +1,5 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { ensureRole } from '@/lib/auth/server';
 
@@ -16,15 +15,15 @@ export async function deleteUser(userId: string) {
         auth: { autoRefreshToken: false, persistSession: false }
     });
 
-    const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(userId);
-    if (deleteAuthError) return { error: 'Failed to delete user: ' + deleteAuthError.message };
-
     const { error: deleteProfileError } = await adminClient
         .from('profiles')
         .delete()
         .eq('id', userId);
 
-    if (deleteProfileError) return { error: 'User deleted but profile cleanup failed: ' + deleteProfileError.message };
+    if (deleteProfileError) return { error: 'Failed to delete profile: ' + deleteProfileError.message };
+
+    const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(userId);
+    if (deleteAuthError) return { error: 'Profile deleted, but auth user deletion failed: ' + deleteAuthError.message };
 
     revalidatePath('/admin/users');
     return { success: true };
@@ -205,7 +204,7 @@ export async function createUserDirectly(email: string, password: string, role: 
     if (error) return { error };
 
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!serviceRoleKey) return { error: 'Configuration error: Missing Service Role Key' };
+    if (!serviceRoleKey) return { error: 'Configuration error: Missing SUPABASE_SERVICE_ROLE_KEY' };
 
     const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
     const adminClient = createSupabaseClient(
@@ -219,33 +218,51 @@ export async function createUserDirectly(email: string, password: string, role: 
         }
     );
 
-    // 2. Create user with password
-    const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
-        email: email,
-        password: password,
-        email_confirm: true, // Auto-confirm email
-        user_metadata: {
-            created_by_admin: true
-        }
+    const { data: createdUser, error: createError } = await adminClient.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { created_by_admin: true }
     });
 
+    let userId = createdUser?.user?.id ?? null;
+
     if (createError) {
-        return { error: 'Failed to create user: ' + createError.message };
+        const message = (createError as any)?.message?.toLowerCase?.() ?? '';
+        const looksLikeExists =
+            message.includes('already') ||
+            message.includes('exists') ||
+            message.includes('registered') ||
+            message.includes('duplicate');
+
+        if (!looksLikeExists) {
+            return { error: 'Failed to create user: ' + (createError as any).message };
+        }
+
+        const { data: usersList, error: listError } = await adminClient.auth.admin.listUsers();
+        if (listError) return { error: 'User exists, but failed to look them up: ' + listError.message };
+
+        const existing = usersList?.users?.find((u: any) => (u.email ?? '').toLowerCase() === email.toLowerCase());
+        if (!existing) return { error: 'User already exists, but could not find them in Auth users list' };
+
+        userId = existing.id;
+
+        const { error: updateError } = await adminClient.auth.admin.updateUserById(userId, { password });
+        if (updateError) return { error: 'User exists, but password update failed: ' + updateError.message };
     }
 
-    if (!newUser.user) {
-        return { error: 'Failed to create user (No data returned)' };
+    if (!userId) {
+        return { error: 'Failed to create user (No user id returned)' };
     }
 
-    // 3. Create profile entry
     const { error: upsertError } = await adminClient
         .from('profiles')
         .upsert({
-            id: newUser.user.id,
-            email: email,
-            role: role,
+            id: userId,
+            email,
+            role,
             updated_at: new Date().toISOString(),
-            full_name: 'New User' // Placeholder
+            full_name: 'New User'
         }, { onConflict: 'id' });
 
     if (upsertError) {

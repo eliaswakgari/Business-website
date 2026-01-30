@@ -172,7 +172,7 @@ export default function UsersManagement() {
         }
 
         toast.success('User removed');
-        setUsers(users.filter(u => u.id !== userId));
+        setUsers((current) => current.filter((u) => u.id !== userId));
     };
 
     const handleEditUser = (user: any) => {

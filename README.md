@@ -109,6 +109,22 @@ How to set them up:
 2. Go to `/admin`
 3. Use the sidebar to manage content
 
+### Inviting users vs creating users
+
+In **production**, prefer **Invite User**.
+
+- **Invite User (recommended)**
+  - Admin enters the user’s email + role.
+  - The system sends an invite link.
+  - The user completes account setup themselves (and sets their own password).
+  - This avoids sharing passwords and is the normal, secure onboarding flow.
+
+- **Create User (demo/testing only)**
+  - Admin enters email + role and sets a temporary password.
+  - This is useful for portfolio demos and quick testing.
+  - The password should be treated as temporary and changed by the user later.
+  - For real client production usage, disable this flow or restrict it to internal admins.
+
 ### Roles
 
 - `admin`: full access (content + user management)
