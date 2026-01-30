@@ -113,23 +113,13 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000`}
               Complete Documentation
             </h3>
             <p className="text-sm text-muted-foreground mb-3">
-              For detailed setup instructions, see the documentation files in your project:
+              For setup and deployment instructions, see:
             </p>
             <ul className="space-y-2 text-sm">
               <li className="flex items-center gap-2">
                 <span className="text-primary">→</span>
-                <code className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">SETUP_GUIDE.md</code>
-                <span className="text-muted-foreground">- Complete setup instructions</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-primary">→</span>
-                <code className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">CMS_README.md</code>
-                <span className="text-muted-foreground">- CMS features and architecture</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-primary">→</span>
-                <code className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">DEPLOYMENT.md</code>
-                <span className="text-muted-foreground">- Production deployment guide</span>
+                <code className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">README.md</code>
+                <span className="text-muted-foreground">- Project documentation</span>
               </li>
             </ul>
           </div>

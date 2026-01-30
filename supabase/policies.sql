@@ -32,6 +32,16 @@ CREATE POLICY "Admins can update any profile" ON public.profiles
     )
   );
 
+-- Allow admins to delete profiles (user removal)
+DROP POLICY IF EXISTS "Admins can delete any profile" ON public.profiles;
+CREATE POLICY "Admins can delete any profile" ON public.profiles
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
 -- Posts: Published posts are public, drafts only for authors/admins
 DROP POLICY IF EXISTS "Published posts are viewable by everyone" ON public.posts;
 CREATE POLICY "Published posts are viewable by everyone" ON public.posts

@@ -26,7 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Trash2, Loader2, Mail, Shield, User, CheckCircle2, Copy, Link2, Edit2, RefreshCw } from 'lucide-react';
-import { inviteUser, getInviteLink, createUserDirectly, resetUserPassword } from './actions';
+import { inviteUser, getInviteLink, createUserDirectly, resetUserPassword, deleteUser } from './actions';
 import { toast } from 'sonner';
 
 export default function UsersManagement() {
@@ -164,17 +164,15 @@ export default function UsersManagement() {
     const handleDelete = async (userId: string) => {
         if (!confirm('Are you sure you want to remove this user? This will remove their access immediately.')) return;
 
-        const { error } = await supabase
-            .from('profiles')
-            .delete()
-            .eq('id', userId);
+        const result = await deleteUser(userId);
 
-        if (error) {
-            toast.error('Failed to delete user: ' + error.message);
-        } else {
-            toast.success('User removed');
-            setUsers(users.filter(u => u.id !== userId));
+        if (result?.error) {
+            toast.error(result.error);
+            return;
         }
+
+        toast.success('User removed');
+        setUsers(users.filter(u => u.id !== userId));
     };
 
     const handleEditUser = (user: any) => {

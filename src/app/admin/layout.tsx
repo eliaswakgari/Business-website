@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { requireRole } from '@/lib/auth/server';
 import { SidebarProvider } from '@/components/admin/SidebarContext';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
@@ -10,26 +9,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect('/login');
-  }
-
-  // Get user profile with role
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || !['admin', 'editor', 'viewer'].includes(profile.role)) {
-    redirect('/');
-  }
+  const { user, profile } = await requireRole(['admin', 'editor', 'viewer']);
 
   return (
     <SidebarProvider>

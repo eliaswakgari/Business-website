@@ -2,25 +2,37 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { ensureRole } from '@/lib/auth/server';
+
+export async function deleteUser(userId: string) {
+    const { error } = await ensureRole(['admin']);
+    if (error) return { error };
+
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceRoleKey) return { error: 'Configuration error' };
+
+    const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
+    const adminClient = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false }
+    });
+
+    const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(userId);
+    if (deleteAuthError) return { error: 'Failed to delete user: ' + deleteAuthError.message };
+
+    const { error: deleteProfileError } = await adminClient
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+
+    if (deleteProfileError) return { error: 'User deleted but profile cleanup failed: ' + deleteProfileError.message };
+
+    revalidatePath('/admin/users');
+    return { success: true };
+}
 
 export async function inviteUser(email: string, role: 'admin' | 'editor' | 'viewer') {
-    const supabase = await createClient();
-
-    // 1. Check if current user is admin
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        return { error: 'Not authenticated' };
-    }
-
-    const { data: curProfile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-
-    if (curProfile?.role !== 'admin') {
-        return { error: 'Unauthorized: Only admins can invite users' };
-    }
+    const { error } = await ensureRole(['admin']);
+    if (error) return { error };
 
     // 2. Invite user via Supabase Admin API
     // NOTE: This usually requires SERVICE_ROLE_KEY if we want to bypass email confirmation or do specific things,
@@ -163,21 +175,8 @@ export async function inviteUser(email: string, role: 'admin' | 'editor' | 'view
 }
 
 export async function getInviteLink(email: string) {
-    const supabase = await createClient();
-
-    // 1. Check if current user is admin
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: 'Not authenticated' };
-
-    const { data: curProfile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-
-    if (curProfile?.role !== 'admin') {
-        return { error: 'Unauthorized' };
-    }
+    const { error } = await ensureRole(['admin']);
+    if (error) return { error };
 
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!serviceRoleKey) return { error: 'Configuration error' };
@@ -202,21 +201,8 @@ export async function getInviteLink(email: string) {
 }
 
 export async function createUserDirectly(email: string, password: string, role: 'admin' | 'editor' | 'viewer') {
-    const supabase = await createClient();
-
-    // 1. Check if current user is admin
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: 'Not authenticated' };
-
-    const { data: curProfile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-
-    if (curProfile?.role !== 'admin') {
-        return { error: 'Unauthorized: Only admins can create users' };
-    }
+    const { error } = await ensureRole(['admin']);
+    if (error) return { error };
 
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!serviceRoleKey) return { error: 'Configuration error: Missing Service Role Key' };
@@ -271,12 +257,8 @@ export async function createUserDirectly(email: string, password: string, role: 
 }
 
 export async function resetUserPassword(userId: string, newPassword: string) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: 'Not authenticated' };
-
-    const { data: curProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-    if (curProfile?.role !== 'admin') return { error: 'Unauthorized' };
+    const { error: authError } = await ensureRole(['admin']);
+    if (authError) return { error: authError };
 
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!serviceRoleKey) return { error: 'Configuration error' };
@@ -286,11 +268,11 @@ export async function resetUserPassword(userId: string, newPassword: string) {
         auth: { autoRefreshToken: false, persistSession: false }
     });
 
-    const { error } = await adminClient.auth.admin.updateUserById(userId, {
+    const { error: updateError } = await adminClient.auth.admin.updateUserById(userId, {
         password: newPassword
     });
 
-    if (error) return { error: 'Failed to reset password: ' + error.message };
+    if (updateError) return { error: 'Failed to reset password: ' + updateError.message };
 
     return { success: true };
 }

@@ -201,6 +201,14 @@ CREATE POLICY "Admins can update any profile" ON public.profiles
     )
   );
 
+CREATE POLICY "Admins can delete any profile" ON public.profiles
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
 -- Posts: Published posts are public, drafts only for authors/admins
 CREATE POLICY "Published posts are viewable by everyone" ON public.posts
   FOR SELECT USING (status = 'published' OR auth.uid() = author_id);
